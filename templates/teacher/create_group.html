@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Create Teaching Group{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 1.5rem auto;">
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('teacher_dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+            &larr; Back to My Groups
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Create New Teaching Group</h2>
+        </div>
+        <form method="POST" action="{{ url_for('teacher_create_group') }}">
+            <div class="form-group">
+                <label class="form-label" for="name">Group / Class Name</label>
+                <input type="text" id="name" name="name" class="form-control" required placeholder="e.g. Grade 10 Mathematics, Web Development Bootcamp">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="description">Description / Syllabus Overview</label>
+                <textarea id="description" name="description" class="form-control" rows="4" placeholder="Briefly describe what this group or class covers..."></textarea>
+            </div>
+
+            <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-muted);">
+                💡 <strong>Note:</strong> A unique 6-character Join Code will be automatically generated. You can share that code with your students so they can enroll.
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

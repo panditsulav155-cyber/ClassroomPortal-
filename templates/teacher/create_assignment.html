@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Create Assignment - {{ group['name'] }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 1.5rem auto;">
+    <div style="margin-bottom: 1rem;">
+        <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+            &larr; Back to {{ group['name'] }}
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">Add Assignment / Learning Task</h2>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">For Group: {{ group['name'] }}</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label" for="title">Assignment Title</label>
+                <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Essay 1: Modern History, Exercise Set 3">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="description">Instructions &amp; Requirements</label>
+                <textarea id="description" name="description" class="form-control" rows="5" required placeholder="Detail the instructions, guidelines, and what students must submit..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="due_date">Due Date / Deadline (Optional)</label>
+                    <input type="datetime-local" id="due_date" name="due_date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="max_points">Maximum Points</label>
+                    <input type="number" id="max_points" name="max_points" class="form-control" value="100" min="1" max="1000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="attachment">Attach Learning Material / Worksheet (Optional)</label>
+                <input type="file" id="attachment" name="attachment" class="form-control">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                    Students in this group will be able to download this file.
+                </small>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Publish Assignment</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

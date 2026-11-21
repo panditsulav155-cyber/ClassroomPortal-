@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ClassroomPortal{% endblock %} - Teaching & Learning Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <a href="{{ url_for('index') }}" class="nav-brand">
+            <span>🎓 ClassroomPortal</span>
+        </a>
+        <nav>
+            <ul class="nav-links">
+                {% if g.user %}
+                    {% if g.user['role'] == 'teacher' %}
+                        <li><a href="{{ url_for('teacher_dashboard') }}">My Groups</a></li>
+                        <li><a href="{{ url_for('teacher_create_group') }}">+ New Group</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('student_dashboard') }}">My Classes</a></li>
+                        <li><a href="{{ url_for('student_join_group') }}">+ Join Group</a></li>
+                    {% endif %}
+                    <li class="nav-user">
+                        <span class="user-badge {{ g.user['role'] }}">{{ g.user['role'] }}</span>
+                        <strong>{{ g.user['full_name'] }}</strong>
+                        <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">Logout</a>
+                    </li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}">Log In</a></li>
+                    <li><a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Register</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alerts-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2026 ClassroomPortal &bull; Secure Teaching & Learning Activities &bull; Confidential Submissions</p>
+    </footer>
+</body>
+</html>

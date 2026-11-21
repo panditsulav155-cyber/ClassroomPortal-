@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group['name'] }} - Management{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('teacher_dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        &larr; Back to My Groups
+    </a>
+</div>
+
+<!-- Group Header Card -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem;">{{ group['name'] }}</h1>
+            {% if group['description'] %}
+                <p style="color: var(--text-muted); font-size: 1rem; max-width: 700px;">{{ group['description'] }}</p>
+            {% endif %}
+        </div>
+        <div style="text-align: right; background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.75rem 1.25rem; border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">
+                Student Join Code
+            </div>
+            <span class="code-pill">{{ group['join_code'] }}</span>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Share with students</div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignments Section -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Learning Activities &amp; Assignments</h2>
+        <a href="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" class="btn btn-primary btn-sm">
+            + Add Assignment
+        </a>
+    </div>
+
+    {% if assignments %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Due Date</th>
+                        <th>Max Points</th>
+                        <th>Submissions</th>
+                        <th>Material</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assignments %}
+                        <tr>
+                            <td>
+                                <strong>{{ a['title'] }}</strong>
+                                <div style="font-size: 0.82rem; color: var(--text-muted);">{{ a['description'][:60] }}{% if a['description']|length > 60 %}...{% endif %}</div>
+                            </td>
+                            <td>
+                                {% if a['due_date'] %}
+                                    <span>{{ a['due_date'] }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">No deadline</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ a['max_points'] }} pts</td>
+                            <td>
+                                <span class="badge {% if a['submission_count'] > 0 %}badge-success{% else %}badge-secondary{% endif %}">
+                                    {{ a['submission_count'] }} / {{ a['total_students'] }} submitted
+                                </span>
+                            </td>
+                            <td>
+                                {% if a['attachment_filename'] %}
+                                    <a href="{{ url_for('download_assignment_attachment', assignment_id=a['id']) }}" class="btn btn-secondary btn-sm" title="Download Material">
+                                        📎 Download
+                                    </a>
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('teacher_assignment_submissions', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
+                                    Review Submissions &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+            <p style="margin-bottom: 1rem;">No assignments given in this group yet.</p>
+            <a href="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" class="btn btn-primary btn-sm">
+                Create First Assignment
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Enrolled Students Section -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Enrolled Students ({{ members|length }})</h2>
+    </div>
+
+    {% if members %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Email</th>
+                        <th>Username</th>
+                        <th>Joined Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in members %}
+                        <tr>
+                            <td><strong>{{ m['full_name'] }}</strong></td>
+                            <td>{{ m['email'] }}</td>
+                            <td><code>@{{ m['username'] }}</code></td>
+                            <td>{{ m['joined_at'][:10] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+            <p>No students have joined this group yet. Share Join Code: <strong>{{ group['join_code'] }}</strong> with your students.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

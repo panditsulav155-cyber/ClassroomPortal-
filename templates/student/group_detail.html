@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ group['name'] }} - Group Overview{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('student_dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        &larr; Back to Dashboard
+    </a>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem;">{{ group['name'] }}</h1>
+            <div style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.5rem;">
+                Teacher: <strong>{{ group['teacher_name'] }}</strong> ({{ group['teacher_email'] }})
+            </div>
+            {% if group['description'] %}
+                <p style="color: var(--text-muted); font-size: 0.95rem;">{{ group['description'] }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <span class="badge badge-secondary" style="font-size: 0.85rem;">Enrolled</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Group Assignments</h2>
+    </div>
+
+    {% if assignments %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Assignment</th>
+                        <th>Due Date</th>
+                        <th>Points</th>
+                        <th>My Status</th>
+                        <th>Grade</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assignments %}
+                        <tr>
+                            <td>
+                                <strong>{{ a['title'] }}</strong>
+                                <div style="font-size: 0.82rem; color: var(--text-muted);">{{ a['description'][:70] }}{% if a['description']|length > 70 %}...{% endif %}</div>
+                            </td>
+                            <td>
+                                {% if a['due_date'] %}
+                                    <span>{{ a['due_date'] }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">No deadline</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ a['max_points'] }} pts</td>
+                            <td>
+                                {% if a['submission_id'] %}
+                                    <span class="badge badge-success">Submitted</span>
+                                {% else %}
+                                    <span class="badge badge-danger">Not Submitted</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a['grade'] is not none %}
+                                    <strong style="color: var(--primary);">{{ a['grade'] }} / {{ a['max_points'] }}</strong>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
+                                    {% if a['submission_id'] %}View Submission{% else %}Submit{% endif %} &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+            No assignments have been posted in this group yet.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 3rem 1rem; max-width: 800px; margin: 0 auto;">
+    <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">
+        Teaching &amp; Learning Activities Platform
+    </h1>
+    <p style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 2rem;">
+        Teachers create their own subject groups and assign coursework. Students enroll and submit their work with guaranteed privacy—student files are strictly confidential and accessible only by the group teacher.
+    </p>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 3rem;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary" style="padding: 0.75rem 1.75rem; font-size: 1.05rem;">
+            Get Started (Register)
+        </a>
+        <a href="{{ url_for('login') }}" class="btn btn-secondary" style="padding: 0.75rem 1.75rem; font-size: 1.05rem;">
+            Existing User Log In
+        </a>
+    </div>
+
+    <div class="grid grid-3" style="text-align: left;">
+        <div class="card">
+            <h3 style="margin-bottom: 0.5rem; color: var(--primary);">👨‍🏫 Teacher Groups</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Create isolated subject groups with custom join codes. Publish assignments with instructions and resource files.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 0.5rem; color: var(--secondary);">📝 Student Submissions</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Join teacher groups using simple join codes, view deadlines, upload solutions, and track grades and remarks.
+            </p>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom: 0.5rem; color: var(--success);">🔒 Private File Security</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Student files are stored in protected storage. Other students cannot browse, view, or download each other's submissions.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

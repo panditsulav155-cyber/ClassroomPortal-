@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div>
+        <h1 style="font-size: 1.75rem; font-weight: 700;">My Learning Dashboard</h1>
+        <p style="color: var(--text-muted);">View enrolled classes, complete assignments, and track grades.</p>
+    </div>
+    <a href="{{ url_for('student_join_group') }}" class="btn btn-primary">
+        + Join Group with Code
+    </a>
+</div>
+
+<!-- Enrolled Groups Section -->
+<div style="margin-bottom: 2.5rem;">
+    <h2 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem;">My Enrolled Groups</h2>
+    {% if groups %}
+        <div class="grid grid-3">
+            {% for g in groups %}
+                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h3 style="font-size: 1.15rem; font-weight: 600; margin-bottom: 0.25rem;">
+                            <a href="{{ url_for('student_group_detail', group_id=g['id']) }}" style="color: var(--text-main); text-decoration: none;">
+                                {{ g['name'] }}
+                            </a>
+                        </h3>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                            Teacher: <strong>{{ g['teacher_name'] }}</strong>
+                        </div>
+                        {% if g['description'] %}
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                                {{ g['description'][:80] }}{% if g['description']|length > 80 %}...{% endif %}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">{{ g['assignment_count'] }} Task{% if g['assignment_count'] != 1 %}s{% endif %}</span>
+                        <a href="{{ url_for('student_group_detail', group_id=g['id']) }}" class="btn btn-secondary btn-sm">
+                            Open Group &rarr;
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card" style="text-align: center; padding: 2.5rem 1rem;">
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">You are not enrolled in any teaching groups yet.</p>
+            <a href="{{ url_for('student_join_group') }}" class="btn btn-primary">
+                Join a Group Using Code
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Active & Upcoming Assignments -->
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">All Course Activities &amp; Assignments</h2>
+    </div>
+
+    {% if assignments %}
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Assignment</th>
+                        <th>Group / Teacher</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Grade</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in assignments %}
+                        <tr>
+                            <td>
+                                <strong>{{ a['title'] }}</strong>
+                            </td>
+                            <td>
+                                <div>{{ a['group_name'] }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ a['teacher_name'] }}</div>
+                            </td>
+                            <td>
+                                {% if a['due_date'] %}
+                                    <span>{{ a['due_date'] }}</span>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">No deadline</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a['submission_id'] %}
+                                    {% if a['grade'] is not none %}
+                                        <span class="badge badge-success">Graded</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Submitted (Pending Review)</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge badge-danger">Not Submitted</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a['grade'] is not none %}
+                                    <strong style="color: var(--primary);">{{ a['grade'] }} / {{ a['max_points'] }}</strong>
+                                {% else %}
+                                    <span style="color: var(--text-muted);">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
+                                    {% if a['submission_id'] %}View Submission{% else %}Submit Work{% endif %} &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
+            No assignments found. Once you join groups, your tasks will appear here.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

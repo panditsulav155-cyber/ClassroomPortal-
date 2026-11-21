@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}{{ assignment['title'] }} - Assignment{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('student_group_detail', group_id=assignment['group_id']) }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        &larr; Back to {{ assignment['group_name'] }}
+    </a>
+</div>
+
+<div class="grid grid-2">
+    <!-- Assignment Details Column -->
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--primary); text-transform: uppercase;">
+                        {{ assignment['group_name'] }}
+                    </div>
+                    <h1 style="font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem;">{{ assignment['title'] }}</h1>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <div style="background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                    Teacher: <strong>{{ assignment['teacher_name'] }}</strong>
+                </div>
+                <div style="background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                    Max Points: <strong>{{ assignment['max_points'] }} pts</strong>
+                </div>
+                {% if assignment['due_date'] %}
+                    <div style="background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.5rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                        Due: <strong>{{ assignment['due_date'] }}</strong>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem;">Instructions:</h3>
+                <div style="color: var(--text-main); font-size: 0.95rem; white-space: pre-line; line-height: 1.6; background-color: #fbfcfe; border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-sm);">
+                    {{ assignment['description'] }}
+                </div>
+            </div>
+
+            {% if assignment['attachment_filename'] %}
+                <div style="background-color: #eef2ff; border: 1px solid #c7d2fe; border-radius: var(--radius-sm); padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: #3730a3; font-size: 0.9rem;">Course Learning Material:</strong>
+                        <div style="font-size: 0.85rem; color: #4338ca;">{{ assignment['original_attachment_name'] or 'Attachment' }}</div>
+                    </div>
+                    <a href="{{ url_for('download_assignment_attachment', assignment_id=assignment['id']) }}" class="btn btn-primary btn-sm">
+                        📥 Download Material
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Submission & Grading Column -->
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">My Submission</h2>
+                {% if submission %}
+                    <span class="badge badge-success">Submitted</span>
+                {% else %}
+                    <span class="badge badge-warning">Awaiting Upload</span>
+                {% endif %}
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <span class="privacy-badge">
+                    🔒 Protected: Your file can only be accessed by you and your teacher.
+                </span>
+            </div>
+
+            {% if submission %}
+                <!-- Existing Submission Info -->
+                <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Submitted on: <strong>{{ submission['submitted_at'][:16] }}</strong>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; background: #ffffff; padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <span style="font-weight: 500; font-size: 0.9rem; word-break: break-all;">
+                            📄 {{ submission['original_filename'] }}
+                        </span>
+                        <a href="{{ url_for('download_submission_file', submission_id=submission['id']) }}" class="btn btn-secondary btn-sm">
+                            📥 Download
+                        </a>
+                    </div>
+
+                    {% if submission['notes'] %}
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">
+                            <strong>My Notes:</strong> {{ submission['notes'] }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Teacher Feedback / Grade -->
+                {% if submission['grade'] is not none or submission['feedback'] %}
+                    <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.5rem;">
+                        <h4 style="color: #065f46; font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;">
+                            👨‍🏫 Teacher Evaluation &amp; Grade
+                        </h4>
+                        {% if submission['grade'] is not none %}
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem;">
+                                Score: {{ submission['grade'] }} / {{ assignment['max_points'] }}
+                            </div>
+                        {% endif %}
+                        {% if submission['feedback'] %}
+                            <div style="font-size: 0.9rem; color: #1e293b; margin-top: 0.5rem;">
+                                <strong>Feedback:</strong> {{ submission['feedback'] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; background: #fffbeb; border: 1px solid #fef3c7; padding: 0.75rem; border-radius: var(--radius-sm);">
+                        ⏳ Awaiting grading by your teacher.
+                    </div>
+                {% endif %}
+
+                <!-- Option to Resubmit -->
+                <details style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <summary style="cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--primary);">
+                        Need to update or replace your submission?
+                    </summary>
+                    <form method="POST" action="{{ url_for('student_assignment_detail', assignment_id=assignment['id']) }}" enctype="multipart/form-data" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label class="form-label" for="resubmit_file">Choose New File</label>
+                            <input type="file" id="resubmit_file" name="file" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="resubmit_notes">Updated Notes (Optional)</label>
+                            <textarea id="resubmit_notes" name="notes" class="form-control" rows="2" placeholder="Notes for your teacher...">{{ submission['notes'] or '' }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-sm">Upload New Version</button>
+                    </form>
+                </details>
+
+            {% else %}
+                <!-- New Submission Form -->
+                <form method="POST" action="{{ url_for('student_assignment_detail', assignment_id=assignment['id']) }}" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label" for="file">Upload Your Work / Solution File *</label>
+                        <input type="file" id="file" name="file" class="form-control" required>
+                        <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                            PDF, Word, Code, Images, Zip, etc. Max 50MB.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="notes">Comments or Notes for Teacher (Optional)</label>
+                        <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Add any comments or questions regarding your submission..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+                        Submit Homework
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
