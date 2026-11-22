@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import threading
 from app import app
@@ -13,7 +13,7 @@ SCREENSHOTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scre
 os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
 def run_flask():
-    app.run(host='127.0.0.1', port=5058, debug=False, use_reloader=False)
+    app.run(host='127.0.0.1', port=5059, debug=False, use_reloader=False)
 
 def capture_all():
     seed()
@@ -33,7 +33,7 @@ def capture_all():
     options.add_argument('--disable-gpu')
     driver = webdriver.Edge(options=options)
 
-    base_url = 'http://127.0.0.1:5058'
+    base_url = 'http://127.0.0.1:5059'
 
     try:
         # 1. Landing Page
@@ -42,7 +42,7 @@ def capture_all():
         driver.save_screenshot(os.path.join(SCREENSHOTS_DIR, '01_landing_page.png'))
         print("Captured 01_landing_page.png")
 
-        # 2. Registration Page
+        # 2. Registration Page (Shows Teacher & Student role selection cards)
         driver.get(f'{base_url}/register')
         time.sleep(1)
         driver.save_screenshot(os.path.join(SCREENSHOTS_DIR, '02_registration_page.png'))
@@ -55,7 +55,7 @@ def capture_all():
         print("Captured 03_login_page.png")
 
         # 4. Teacher Dashboard
-        driver.find_element(By.ID, 'login_input').send_keys('sarah@school.edu')
+        driver.find_element(By.ID, 'login_input').send_keys('sarah.connor@gmail.com')
         driver.find_element(By.ID, 'password').send_keys('password123')
         driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
         time.sleep(1)
@@ -84,7 +84,7 @@ def capture_all():
         driver.get(f'{base_url}/logout')
         time.sleep(1)
         driver.get(f'{base_url}/login')
-        driver.find_element(By.ID, 'login_input').send_keys('alex@school.edu')
+        driver.find_element(By.ID, 'login_input').send_keys('alex.rivera@gmail.com')
         driver.find_element(By.ID, 'password').send_keys('password123')
         driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
         time.sleep(1)
@@ -107,7 +107,7 @@ def capture_all():
         driver.get(f'{base_url}/logout')
         time.sleep(1)
         driver.get(f'{base_url}/login')
-        driver.find_element(By.ID, 'login_input').send_keys('emma@school.edu')
+        driver.find_element(By.ID, 'login_input').send_keys('emma.watson@gmail.com')
         driver.find_element(By.ID, 'password').send_keys('password123')
         driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
         time.sleep(1)

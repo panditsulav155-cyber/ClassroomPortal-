@@ -393,3 +393,104 @@ footer {
     font-size: 0.85rem;
     color: var(--text-muted);
 }
+
+
+/* Distinct Role Banners & Cards */
+.role-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.teacher-hero {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    border: 1px solid #c4b5fd;
+}
+
+.student-hero {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 1px solid #7dd3fc;
+}
+
+/* User Role Badges */
+.user-badge {
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    letter-spacing: 0.03em;
+}
+
+.user-badge.teacher {
+    background-color: #ede9fe;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+}
+
+.user-badge.student {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+/* Role Selector Cards in Registration */
+.role-selector-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+    .role-selector-container {
+        flex-direction: column;
+    }
+}
+
+.role-card {
+    flex: 1;
+    border: 2px solid var(--border-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.role-card:hover {
+    border-color: #cbd5e1;
+    background-color: #f8fafc;
+}
+
+.role-card.active-student {
+    border-color: #0284c7;
+    background: #f0f9ff;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.role-card.active-teacher {
+    border-color: #7c3aed;
+    background: #f5f3ff;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+}
+
+.field-requirement-badge {
+    font-size: 0.72rem;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 500;
+    margin-left: 0.4rem;
+}

@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import uuid
 from functools import wraps
@@ -126,31 +127,70 @@ def register():
         role = request.form.get('role', '').strip().lower()
         full_name = request.form.get('full_name', '').strip()
 
-        if not username or not email or not password or not role or not full_name:
-            flash('All fields are required.', 'danger')
-            return render_template('auth/register.html')
+        # 1. Mandatory Fields Check ("mail paspost ko nessasary")
+        if not full_name:
+            flash('Full Name is required.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
+        if not username:
+            flash('Username is required.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        if not email:
+            flash('Email address is required.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        if not password:
+            flash('Password is required.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        # 2. Role Validation ("teacher student xuttini gari rakha")
         if role not in ('teacher', 'student'):
-            flash('Invalid role selected.', 'danger')
-            return render_template('auth/register.html')
+            flash('Please choose whether you are registering as a Student or Teacher.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        if password != confirm_password:
-            flash('Passwords do not match.', 'danger')
-            return render_template('auth/register.html')
+        # 3. Name Validation ("name latter bata huna paryo")
+        # Full name must start with an alphabet letter (A-Z)
+        if not re.match(r'^[A-Za-z]', full_name):
+            flash('Full Name must start with an alphabet letter (A-Z). Numbers or symbols are not allowed at the beginning.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
+        if not re.match(r"^[A-Za-z][A-Za-z\s.\'-]{1,49}$", full_name):
+            flash('Full Name must contain only alphabet letters, spaces, and valid name characters (2-50 characters).', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        # Username must start with an alphabet letter (A-Z)
+        if not re.match(r'^[A-Za-z]', username):
+            flash('Username must start with an alphabet letter (A-Z). Numbers or symbols are not allowed at the beginning.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        if not re.match(r'^[A-Za-z][A-Za-z0-9_]{2,29}$', username):
+            flash('Username must start with a letter and contain only letters, numbers, or underscores (3-30 characters).', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        # 4. Email Validation ("mail ma gmail.com")
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@gmail\.com$', email):
+            flash('Email must be a valid Gmail address ending with @gmail.com (e.g., yourname@gmail.com).', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        # 5. Password Validation ("paspost ko nessasary")
         if len(password) < 6:
             flash('Password must be at least 6 characters long.', 'danger')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        if password != confirm_password:
+            flash('Passwords do not match. Please re-enter your password.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
         db = get_db()
         existing = db.execute(
-            'SELECT id FROM users WHERE username = ? OR email = ?',
-            (username, email)
+            'SELECT id FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?',
+            (username.lower(), email)
         ).fetchone()
 
         if existing:
-            flash('Username or email is already registered.', 'danger')
-            return render_template('auth/register.html')
+            flash('Username or Gmail address is already registered. Please log in or use another.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
         password_hash = generate_password_hash(password)
         with db:
@@ -160,10 +200,11 @@ def register():
                 (username, email, password_hash, role, full_name)
             )
 
-        flash('Registration successful! You can now log in.', 'success')
+        role_label = '👨‍🏫 Teacher' if role == 'teacher' else '👨‍🎓 Student'
+        flash(f'Registration successful as {role_label}! You can now log in with your Gmail or username.', 'success')
         return redirect(url_for('login'))
 
-    return render_template('auth/register.html')
+    return render_template('auth/register.html', role='student')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -173,6 +214,10 @@ def login():
     if request.method == 'POST':
         login_input = request.form.get('login_input', '').strip().lower()
         password = request.form.get('password', '')
+
+        if not login_input or not password:
+            flash('Please enter both your Gmail/username and password.', 'danger')
+            return render_template('auth/login.html')
 
         db = get_db()
         user = db.execute(
@@ -186,13 +231,14 @@ def login():
             session['username'] = user['username']
             session['role'] = user['role']
             session['full_name'] = user['full_name']
-            flash(f"Welcome back, {user['full_name']}!", 'success')
+            role_label = '👨‍🏫 Teacher' if user['role'] == 'teacher' else '👨‍🎓 Student'
+            flash(f"Welcome back, {user['full_name']}! ({role_label})", 'success')
             next_page = request.args.get('next')
             if next_page and next_page.startswith('/'):
                 return redirect(next_page)
             return redirect(url_for('index'))
         else:
-            flash('Invalid username/email or password.', 'danger')
+            flash('Invalid username/Gmail or password.', 'danger')
 
     return render_template('auth/login.html')
 
@@ -671,4 +717,3 @@ if __name__ == '__main__':
     print("  Local (Only this PC): http://127.0.0.1:5000")
     print("  Network (Same Wi-Fi): http://0.0.0.0:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)
-

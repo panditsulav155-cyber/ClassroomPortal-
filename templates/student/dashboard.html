@@ -3,12 +3,17 @@
 {% block title %}Student Dashboard{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-    <div>
-        <h1 style="font-size: 1.75rem; font-weight: 700;">My Learning Dashboard</h1>
-        <p style="color: var(--text-muted);">View enrolled classes, complete assignments, and track grades.</p>
+<div class="role-hero student-hero">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 2.2rem;">👨‍🎓</span>
+        <div>
+            <h1 style="font-size: 1.6rem; font-weight: 700; color: #0284c7; margin: 0;">Student Learning Hub &bull; My Classes</h1>
+            <p style="color: #64748b; margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                Join teacher groups using 6-character Join Codes, submit homework files, and review private grades and remarks.
+            </p>
+        </div>
     </div>
-    <a href="{{ url_for('student_join_group') }}" class="btn btn-primary">
+    <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="white-space: nowrap; background-color: #0284c7;">
         + Join Group with Code
     </a>
 </div>
@@ -19,7 +24,7 @@
     {% if groups %}
         <div class="grid grid-3">
             {% for g in groups %}
-                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #0284c7;">
                     <div>
                         <h3 style="font-size: 1.15rem; font-weight: 600; margin-bottom: 0.25rem;">
                             <a href="{{ url_for('student_group_detail', group_id=g['id']) }}" style="color: var(--text-main); text-decoration: none;">
@@ -27,7 +32,7 @@
                             </a>
                         </h3>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                            Teacher: <strong>{{ g['teacher_name'] }}</strong>
+                            Instructor: <strong>👨‍🏫 {{ g['teacher_name'] }}</strong>
                         </div>
                         {% if g['description'] %}
                             <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
@@ -47,7 +52,7 @@
     {% else %}
         <div class="card" style="text-align: center; padding: 2.5rem 1rem;">
             <p style="color: var(--text-muted); margin-bottom: 1rem;">You are not enrolled in any teaching groups yet.</p>
-            <a href="{{ url_for('student_join_group') }}" class="btn btn-primary">
+            <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="background-color: #0284c7;">
                 Join a Group Using Code
             </a>
         </div>
@@ -66,7 +71,7 @@
                 <thead>
                     <tr>
                         <th>Assignment</th>
-                        <th>Group / Teacher</th>
+                        <th>Group / Instructor</th>
                         <th>Due Date</th>
                         <th>Status</th>
                         <th>Grade</th>
@@ -81,7 +86,7 @@
                             </td>
                             <td>
                                 <div>{{ a['group_name'] }}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ a['teacher_name'] }}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">👨‍🏫 {{ a['teacher_name'] }}</div>
                             </td>
                             <td>
                                 {% if a['due_date'] %}

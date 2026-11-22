@@ -3,67 +3,154 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
-<div style="max-width: 520px; margin: 2rem auto;">
+<div style="max-width: 580px; margin: 2rem auto;">
     <div class="card">
-        <div class="card-header" style="justify-content: center; text-align: center;">
-            <h2 class="card-title">Create an Account</h2>
+        <div class="card-header" style="justify-content: center; text-align: center; flex-direction: column; gap: 0.35rem;">
+            <h2 class="card-title" style="font-size: 1.6rem;">Create Your Account</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Select your role, use a valid <strong>@gmail.com</strong> email, and ensure your name starts with an alphabet letter.
+            </p>
         </div>
+
         <form method="POST" action="{{ url_for('register') }}">
+            <!-- Role Selection: Teacher vs Student Distinction -->
             <div class="form-group">
-                <label class="form-label" for="full_name">Full Name</label>
-                <input type="text" id="full_name" name="full_name" class="form-control" required placeholder="e.g. John Doe">
+                <label class="form-label" style="font-weight: 700; margin-bottom: 0.5rem;">
+                    I am registering as:
+                    <span class="field-requirement-badge">Distinct Role Selection</span>
+                </label>
+                
+                <div class="role-selector-container">
+                    <!-- Student Card -->
+                    <label class="role-card {% if role != 'teacher' %}active-student{% endif %}" id="card-student" onclick="selectRole('student')">
+                        <input type="radio" name="role" value="student" id="role-student" {% if role != 'teacher' %}checked{% endif %} style="margin-top: 0.2rem;">
+                        <div>
+                            <div style="font-weight: 700; color: #0369a1; font-size: 1.05rem; display: flex; align-items: center; gap: 0.35rem;">
+                                <span>👨‍🎓</span> Student Account
+                            </div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.35;">
+                                Join classes via 6-char Join Code, submit assignments, and track personal grades privately.
+                            </div>
+                        </div>
+                    </label>
+
+                    <!-- Teacher Card -->
+                    <label class="role-card {% if role == 'teacher' %}active-teacher{% endif %}" id="card-teacher" onclick="selectRole('teacher')">
+                        <input type="radio" name="role" value="teacher" id="role-teacher" {% if role == 'teacher' %}checked{% endif %} style="margin-top: 0.2rem;">
+                        <div>
+                            <div style="font-weight: 700; color: #6d28d9; font-size: 1.05rem; display: flex; align-items: center; gap: 0.35rem;">
+                                <span>👨‍🏫</span> Teacher Account
+                            </div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.35;">
+                                Create teaching groups, publish assignments &amp; worksheets, and evaluate student submissions.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Full Name (Must start with letters) -->
+            <div class="form-group">
+                <label class="form-label" for="full_name">
+                    Full Name
+                    <span class="field-requirement-badge">Starts with letter A-Z</span>
+                </label>
+                <input type="text" id="full_name" name="full_name" class="form-control" required
+                       pattern="^[A-Za-z][A-Za-z\s.\'-]*$"
+                       title="Full name must begin with an alphabet letter (A-Z)"
+                       placeholder="e.g. Sarah Connor or Alex Rivera"
+                       value="{{ full_name or '' }}">
+                <small style="color: var(--text-muted); font-size: 0.78rem;">Must start with an alphabet letter (cannot begin with numbers or symbols).</small>
             </div>
 
             <div class="form-row">
+                <!-- Username (Must start with letters) -->
                 <div class="form-group">
-                    <label class="form-label" for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" required placeholder="johndoe">
+                    <label class="form-label" for="username">
+                        Username
+                        <span class="field-requirement-badge">Starts with letter</span>
+                    </label>
+                    <input type="text" id="username" name="username" class="form-control" required
+                           pattern="^[A-Za-z][A-Za-z0-9_]*$"
+                           minlength="3"
+                           maxlength="30"
+                           title="Username must start with a letter and contain only letters, numbers, or underscores"
+                           placeholder="e.g. teacher_sarah or student_alex"
+                           value="{{ username or '' }}">
+                    <small style="color: var(--text-muted); font-size: 0.78rem;">At least 3 characters.</small>
                 </div>
+
+                <!-- Email (Must be @gmail.com) -->
                 <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
-                    <input type="email" id="email" name="email" class="form-control" required placeholder="john@example.com">
+                    <label class="form-label" for="email">
+                        Email Address
+                        <span class="field-requirement-badge">@gmail.com required</span>
+                    </label>
+                    <input type="email" id="email" name="email" class="form-control" required
+                           pattern="^[a-zA-Z0-9._%+-]+@gmail\.com$"
+                           title="Email must be a valid @gmail.com address"
+                           placeholder="e.g. yourname@gmail.com"
+                           value="{{ email or '' }}">
+                    <small style="color: var(--text-muted); font-size: 0.78rem;">Only @gmail.com domain is permitted.</small>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">I am registering as:</label>
-                <div style="display: flex; gap: 1rem; margin-top: 0.25rem;">
-                    <label style="flex: 1; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                        <input type="radio" name="role" value="student" checked>
-                        <div>
-                            <strong>Student</strong>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Join groups, submit tasks</div>
-                        </div>
-                    </label>
-                    <label style="flex: 1; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-                        <input type="radio" name="role" value="teacher">
-                        <div>
-                            <strong>Teacher</strong>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">Create groups, give tasks</div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
+            <!-- Password Fields (Required, min 6 characters) -->
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required minlength="6" placeholder="At least 6 characters">
+                    <label class="form-label" for="password">
+                        Password
+                        <span class="field-requirement-badge">Min 6 characters</span>
+                    </label>
+                    <input type="password" id="password" name="password" class="form-control" required minlength="6" placeholder="Enter password">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="confirm_password">Confirm Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required placeholder="Re-enter password">
+                    <label class="form-label" for="confirm_password">
+                        Confirm Password
+                        <span class="field-requirement-badge">Must match</span>
+                    </label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="6" placeholder="Re-type password">
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">
-                Register Account
+            <button type="submit" id="submit_btn" class="btn btn-primary btn-block" style="margin-top: 1.25rem; padding: 0.75rem; font-size: 1rem; font-weight: 600;">
+                Register as Student 👨‍🎓
             </button>
         </form>
 
         <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
-            Already have an account? <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: 600;">Log in here</a>
+            Already registered? <a href="{{ url_for('login') }}" style="color: var(--primary); font-weight: 600;">Log in here</a>
         </p>
     </div>
 </div>
+
+<script>
+function selectRole(role) {
+    const cardStudent = document.getElementById('card-student');
+    const cardTeacher = document.getElementById('card-teacher');
+    const radioStudent = document.getElementById('role-student');
+    const radioTeacher = document.getElementById('role-teacher');
+    const submitBtn = document.getElementById('submit_btn');
+
+    if (role === 'teacher') {
+        radioTeacher.checked = true;
+        cardTeacher.classList.add('active-teacher');
+        cardStudent.classList.remove('active-student');
+        submitBtn.innerHTML = 'Register as Teacher 👨‍🏫';
+        submitBtn.style.backgroundColor = '#6d28d9';
+    } else {
+        radioStudent.checked = true;
+        cardStudent.classList.add('active-student');
+        cardTeacher.classList.remove('active-teacher');
+        submitBtn.innerHTML = 'Register as Student 👨‍🎓';
+        submitBtn.style.backgroundColor = 'var(--primary)';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const isTeacher = document.getElementById('role-teacher').checked;
+    selectRole(isTeacher ? 'teacher' : 'student');
+});
+</script>
 {% endblock %}

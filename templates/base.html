@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ClassroomPortal{% endblock %} - Teaching & Learning Hub</title>
+    <title>{% block title %}ClassroomPortal{% endblock %} - Teaching &amp; Learning Hub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -22,7 +22,11 @@
                         <li><a href="{{ url_for('student_join_group') }}">+ Join Group</a></li>
                     {% endif %}
                     <li class="nav-user">
-                        <span class="user-badge {{ g.user['role'] }}">{{ g.user['role'] }}</span>
+                        {% if g.user['role'] == 'teacher' %}
+                            <span class="user-badge teacher">👨‍🏫 Teacher</span>
+                        {% else %}
+                            <span class="user-badge student">👨‍🎓 Student</span>
+                        {% endif %}
                         <strong>{{ g.user['full_name'] }}</strong>
                         <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">Logout</a>
                     </li>
@@ -51,7 +55,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 ClassroomPortal &bull; Secure Teaching & Learning Activities &bull; Confidential Submissions</p>
+        <p>&copy; 2026 ClassroomPortal &bull; Secure Teaching &amp; Learning Activities &bull; Confidential Submissions</p>
     </footer>
 </body>
 </html>

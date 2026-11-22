@@ -37,12 +37,14 @@ class ClassroomPortalTestCase(unittest.TestCase):
         conn.close()
         return row
 
-    def register(self, username, email, password, role, full_name):
+    def register(self, username, email, password, role, full_name, confirm_password=None):
+        if confirm_password is None:
+            confirm_password = password
         return self.client.post('/register', data={
             'username': username,
             'email': email,
             'password': password,
-            'confirm_password': password,
+            'confirm_password': confirm_password,
             'role': role,
             'full_name': full_name
         }, follow_redirects=True)
@@ -56,9 +58,45 @@ class ClassroomPortalTestCase(unittest.TestCase):
     def logout(self):
         return self.client.get('/logout', follow_redirects=True)
 
+    def test_registration_validation_rules(self):
+        """
+        Verify new requirements:
+        1. Email must be @gmail.com
+        2. Name must start with an alphabet letter
+        3. Password is required, min 6 chars, and must match
+        4. Teacher vs Student role must be valid
+        """
+        # 1. Non-Gmail rejection
+        res_non_gmail = self.register('prof_smith', 'smith@school.edu', 'secret123', 'teacher', 'Professor Smith')
+        self.assertIn(b'Email must be a valid Gmail address', res_non_gmail.data)
+
+        # 2. Full Name starting with number rejection
+        res_bad_name = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', '123Professor Smith')
+        self.assertIn(b'Full Name must start with an alphabet letter', res_bad_name.data)
+
+        # 3. Username starting with number rejection
+        res_bad_uname = self.register('123smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith')
+        self.assertIn(b'Username must start with an alphabet letter', res_bad_uname.data)
+
+        # 4. Short password rejection
+        res_short_pw = self.register('prof_smith', 'smith@gmail.com', '123', 'teacher', 'Professor Smith')
+        self.assertIn(b'Password must be at least 6 characters long', res_short_pw.data)
+
+        # 5. Password mismatch rejection
+        res_mismatch = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith', confirm_password='different123')
+        self.assertIn(b'Passwords do not match', res_mismatch.data)
+
+        # 6. Invalid role rejection
+        res_bad_role = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'admin', 'Professor Smith')
+        self.assertIn(b'Please choose whether you are registering as a Student or Teacher', res_bad_role.data)
+
+        # 7. Valid registration succeeds
+        res_valid = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith')
+        self.assertIn(b'Registration successful', res_valid.data)
+
     def test_registration_and_authentication(self):
         """Test registration, password hashing, and login validation."""
-        res = self.register('prof_smith', 'smith@school.edu', 'secret123', 'teacher', 'Professor Smith')
+        res = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith')
         self.assertIn(b'Registration successful', res.data)
 
         # Verify password in DB is hashed and not plaintext
@@ -67,20 +105,25 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.assertNotEqual(user['password_hash'], 'secret123')
         self.assertEqual(user['role'], 'teacher')
 
-        # Test valid login
+        # Test valid login with username
         login_res = self.login('prof_smith', 'secret123')
         self.assertIn(b'Welcome back, Professor Smith', login_res.data)
+        self.logout()
+
+        # Test valid login with Gmail
+        login_res_email = self.login('smith@gmail.com', 'secret123')
+        self.assertIn(b'Welcome back, Professor Smith', login_res_email.data)
+        self.logout()
         
         # Test wrong password login failure
-        self.logout()
         bad_res = self.login('prof_smith', 'wrongpass')
-        self.assertIn(b'Invalid username/email or password', bad_res.data)
+        self.assertIn(b'Invalid username/Gmail or password', bad_res.data)
 
     def test_group_creation_and_enrollment(self):
         """Test teacher group creation and student enrollment via 6-char join code."""
         # 1. Register Teacher & create group
-        self.register('mr_jones', 'jones@school.edu', 'pass123', 'teacher', 'Mr. Jones')
-        self.login('jones@school.edu', 'pass123')
+        self.register('mr_jones', 'jones@gmail.com', 'pass123', 'teacher', 'Mr. Jones')
+        self.login('jones@gmail.com', 'pass123')
         
         create_res = self.client.post('/teacher/groups/create', data={
             'name': 'Physics 101',
@@ -96,8 +139,8 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # 2. Register Student & join group using join code
-        self.register('alice_s', 'alice@student.edu', 'studentpass', 'student', 'Alice Walker')
-        self.login('alice@student.edu', 'studentpass')
+        self.register('alice_s', 'alice@gmail.com', 'studentpass', 'student', 'Alice Walker')
+        self.login('alice@gmail.com', 'studentpass')
 
         join_res = self.client.post('/student/groups/join', data={
             'join_code': join_code
@@ -118,8 +161,8 @@ class ClassroomPortalTestCase(unittest.TestCase):
         - Denied (redirect / 401 / 403) for unauthenticated guests.
         """
         # Step A: Register Teacher 1
-        self.register('teach1', 'teach1@school.edu', 'pass123', 'teacher', 'Teacher One')
-        self.login('teach1@school.edu', 'pass123')
+        self.register('teach1', 'teach1@gmail.com', 'pass123', 'teacher', 'Teacher One')
+        self.login('teach1@gmail.com', 'pass123')
         self.client.post('/teacher/groups/create', data={'name': 'Biology 101', 'description': 'Cells'})
         
         group = self.query_row('SELECT * FROM groups WHERE name = ?', ('Biology 101',))
@@ -137,8 +180,8 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # Step B: Register Student 1 (Alice) and submit file
-        self.register('alice', 'alice@school.edu', 'pass123', 'student', 'Alice S.')
-        self.login('alice@school.edu', 'pass123')
+        self.register('alice', 'alice@gmail.com', 'pass123', 'student', 'Alice Scott')
+        self.login('alice@gmail.com', 'pass123')
         self.client.post('/student/groups/join', data={'join_code': join_code}, follow_redirects=True)
 
         fake_file_content = b"ALICE'S PRIVATE HOMEWORK LAB CONTENT - CONFIDENTIAL"
@@ -164,8 +207,8 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # Step C: Register Student 2 (Bob) in the SAME group
-        self.register('bob', 'bob@school.edu', 'pass123', 'student', 'Bob S.')
-        self.login('bob@school.edu', 'pass123')
+        self.register('bob', 'bob@gmail.com', 'pass123', 'student', 'Bob Scott')
+        self.login('bob@gmail.com', 'pass123')
         self.client.post('/student/groups/join', data={'join_code': join_code}, follow_redirects=True)
 
         # Verification 2: Bob CANNOT download Alice's submission file (MUST RETURN 403 FORBIDDEN!)
@@ -174,8 +217,8 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # Step D: Register Teacher 2 (who is NOT the teacher of this group)
-        self.register('teach2', 'teach2@school.edu', 'pass123', 'teacher', 'Teacher Two')
-        self.login('teach2@school.edu', 'pass123')
+        self.register('teach2', 'teach2@gmail.com', 'pass123', 'teacher', 'Teacher Two')
+        self.login('teach2@gmail.com', 'pass123')
 
         # Verification 3: Teacher 2 CANNOT download Alice's file (MUST RETURN 403 FORBIDDEN!)
         t2_dl = self.client.get(f'/submissions/{submission_id}/download')
@@ -183,7 +226,7 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # Step E: Teacher 1 (the owner of Biology 101) logs in
-        self.login('teach1@school.edu', 'pass123')
+        self.login('teach1@gmail.com', 'pass123')
 
         # Verification 4: Teacher 1 CAN download Alice's file
         t1_dl = self.client.get(f'/submissions/{submission_id}/download')
@@ -199,7 +242,7 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.logout()
 
         # Step G: Alice logs back in and checks her grade and feedback
-        self.login('alice@school.edu', 'pass123')
+        self.login('alice@gmail.com', 'pass123')
         student_page = self.client.get(f'/student/assignments/{assignment["id"]}')
         self.assertIn(b'98.5', student_page.data)
         self.assertIn(b'Outstanding microscopy diagrams and analysis!', student_page.data)

@@ -20,7 +20,7 @@ def seed():
         cur = db.execute('''
             INSERT INTO users (username, email, password_hash, role, full_name)
             VALUES (?, ?, ?, ?, ?)
-        ''', ('teacher_sarah', 'sarah@school.edu', pw_hash, 'teacher', 'Sarah Connor (Teacher)'))
+        ''', ('teacher_sarah', 'sarah.connor@gmail.com', pw_hash, 'teacher', 'Sarah Connor'))
         teacher_id = cur.lastrowid
 
         # 2. Create Group
@@ -41,13 +41,13 @@ def seed():
         cur = db.execute('''
             INSERT INTO users (username, email, password_hash, role, full_name)
             VALUES (?, ?, ?, ?, ?)
-        ''', ('student_alex', 'alex@school.edu', pw_hash, 'student', 'Alex Rivera'))
+        ''', ('student_alex', 'alex.rivera@gmail.com', pw_hash, 'student', 'Alex Rivera'))
         alex_id = cur.lastrowid
 
         cur = db.execute('''
             INSERT INTO users (username, email, password_hash, role, full_name)
             VALUES (?, ?, ?, ?, ?)
-        ''', ('student_emma', 'emma@school.edu', pw_hash, 'student', 'Emma Watson'))
+        ''', ('student_emma', 'emma.watson@gmail.com', pw_hash, 'student', 'Emma Watson'))
         emma_id = cur.lastrowid
 
         # 5. Enroll Students in Group
@@ -71,17 +71,23 @@ def seed():
     print("ClassroomPortal demo database seeded successfully!")
     print("=" * 60)
     print("Teacher Account:")
-    print("  Username: teacher_sarah  (or email: sarah@school.edu)")
+    print("  Full Name: Sarah Connor (starts with letter S)")
+    print("  Username: teacher_sarah  (or email: sarah.connor@gmail.com)")
     print("  Password: password123")
+    print("  Role: Teacher")
     print("  Group: Grade 10 Biology (Join Code: BIO101)")
     print("-" * 60)
     print("Student 1 (Has Submitted Homework):")
-    print("  Username: student_alex  (or email: alex@school.edu)")
+    print("  Full Name: Alex Rivera (starts with letter A)")
+    print("  Username: student_alex  (or email: alex.rivera@gmail.com)")
     print("  Password: password123")
+    print("  Role: Student")
     print("-" * 60)
     print("Student 2 (Pending Submission):")
-    print("  Username: student_emma  (or email: emma@school.edu)")
+    print("  Full Name: Emma Watson (starts with letter E)")
+    print("  Username: student_emma  (or email: emma.watson@gmail.com)")
     print("  Password: password123")
+    print("  Role: Student")
     print("=" * 60)
 
 if __name__ == '__main__':
