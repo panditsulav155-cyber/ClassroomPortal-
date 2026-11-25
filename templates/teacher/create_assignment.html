@@ -3,7 +3,7 @@
 {% block title %}Create Assignment - {{ group['name'] }}{% endblock %}
 
 {% block content %}
-<div style="max-width: 600px; margin: 1.5rem auto;">
+<div style="max-width: 680px; margin: 1.5rem auto;">
     <div style="margin-bottom: 1rem;">
         <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
             &larr; Back to {{ group['name'] }}
@@ -12,46 +12,54 @@
 
     <div class="card">
         <div class="card-header">
-            <div>
-                <h2 class="card-title">Add Assignment / Learning Task</h2>
-                <div style="font-size: 0.85rem; color: var(--text-muted);">For Group: {{ group['name'] }}</div>
-            </div>
+            <h2 class="card-title">New Coursework Assignment</h2>
+            <span class="badge badge-secondary">{{ group['name'] }}</span>
         </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+            Configure learning objectives, submission deadlines, and maximum score. All marked fields are mandatory.
+        </p>
 
         <form method="POST" action="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" enctype="multipart/form-data">
             <div class="form-group">
-                <label class="form-label" for="title">Assignment Title</label>
-                <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Essay 1: Modern History, Exercise Set 3">
+                <label class="form-label" for="title">
+                    Assignment Title <span class="required-star">*</span>
+                </label>
+                <input type="text" id="title" name="title" class="form-control" required placeholder="e.g. Lab Experiment 1: Cellular Membrane Modeling">
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="description">Instructions &amp; Requirements</label>
-                <textarea id="description" name="description" class="form-control" rows="5" required placeholder="Detail the instructions, guidelines, and what students must submit..."></textarea>
+                <label class="form-label" for="description">
+                    Instructions &amp; Problem Statement <span class="required-star">*</span>
+                </label>
+                <textarea id="description" name="description" class="form-control" style="min-height: 120px;" required placeholder="Provide step-by-step submission instructions, formatting guidelines, and evaluation rubrics..."></textarea>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" for="due_date">Due Date / Deadline (Optional)</label>
-                    <input type="datetime-local" id="due_date" name="due_date" class="form-control">
+                    <label class="form-label" for="due_date">
+                        Submission Deadline <span class="required-star">*</span>
+                    </label>
+                    <input type="datetime-local" id="due_date" name="due_date" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="max_points">Maximum Points</label>
-                    <input type="number" id="max_points" name="max_points" class="form-control" value="100" min="1" max="1000">
+                    <label class="form-label" for="max_points">
+                        Maximum Score (Points) <span class="required-star">*</span>
+                    </label>
+                    <input type="number" id="max_points" name="max_points" class="form-control" required min="1" max="1000" value="100">
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="attachment">Attach Learning Material / Worksheet (Optional)</label>
-                <input type="file" id="attachment" name="attachment" class="form-control">
-                <small style="color: var(--text-muted); display: block; margin-top: 0.25rem;">
-                    Students in this group will be able to download this file.
-                </small>
+                <label class="form-label" for="attachment">
+                    Reference Material / Worksheet File (Optional)
+                </label>
+                <input type="file" id="attachment" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.zip,.txt,.png,.jpg,.jpeg">
+                <small style="color: var(--text-muted); font-size: 0.78rem;">Upload worksheet, syllabus, or problem dataset (PDF, Word DOCX, ZIP, Images).</small>
             </div>
 
-            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
-                <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Publish Assignment</button>
-            </div>
+            <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1.5rem; padding: 0.75rem;">
+                Publish Assignment
+            </button>
         </form>
     </div>
 </div>

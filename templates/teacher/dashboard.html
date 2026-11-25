@@ -1,62 +1,137 @@
 {% extends "base.html" %}
 
-{% block title %}Teacher Dashboard{% endblock %}
+{% block title %}Instructor Workspace{% endblock %}
 
 {% block content %}
 <div class="role-hero teacher-hero">
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <span style="font-size: 2.2rem;">👨‍🏫</span>
+    <div style="display: flex; align-items: center; gap: 0.9rem;">
+        <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--primary); display: flex; align-items: center; justify-content: center; color: white;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+        </div>
         <div>
-            <h1 style="font-size: 1.6rem; font-weight: 700; color: #4338ca; margin: 0;">Teacher Workspace &bull; Instructor Dashboard</h1>
-            <p style="color: #64748b; margin: 0.25rem 0 0 0; font-size: 0.95rem;">
-                Manage teaching groups, share 6-character Join Codes with students, and privately evaluate submissions.
+            <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--primary); margin: 0;">Instructor Workspace</h1>
+            <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                Manage cohorts, issue coursework, and evaluate confidential student submissions.
             </p>
         </div>
     </div>
-    <a href="{{ url_for('teacher_create_group') }}" class="btn btn-primary" style="white-space: nowrap; background-color: #6d28d9;">
-        + Create New Group
+    <a href="{{ url_for('teacher_create_group') }}" class="btn btn-primary" style="white-space: nowrap;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Cohort Group
     </a>
 </div>
 
+<!-- Analytics Overview Row -->
+<div class="grid grid-4" style="margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ groups|length }}</div>
+            <div class="stat-label">Active Cohorts</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon accent">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ total_students }}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ total_assignments }}</div>
+            <div class="stat-label">Assignments Issued</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ pending_submissions }}</div>
+            <div class="stat-label">Pending Reviews</div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Search Bar -->
+<div class="search-container">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <input type="text" id="group-search" class="search-input" placeholder="Search cohorts by name, subject, or join code..." onkeyup="filterGroups()">
+</div>
+
 {% if groups %}
-    <div class="grid grid-2">
+    <div class="grid grid-2" id="groups-container">
         {% for group in groups %}
-            <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #6d28d9;">
+            <div class="card group-item" data-search="{{ group['name']|lower }} {{ group['subject']|lower }} {{ group['join_code']|lower }}" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--primary);">
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
-                        <h2 style="font-size: 1.25rem; font-weight: 600;">
-                            <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" style="color: var(--text-main); text-decoration: none;">
-                                {{ group['name'] }}
-                            </a>
-                        </h2>
+                        <div>
+                            <span class="badge badge-secondary" style="margin-bottom: 0.35rem; font-size: 0.72rem;">{{ group['subject'] }}</span>
+                            <h2 style="font-size: 1.25rem; font-weight: 700;">
+                                <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" style="color: var(--text-main); text-decoration: none;">
+                                    {{ group['name'] }}
+                                </a>
+                            </h2>
+                        </div>
                         <span class="code-pill" title="Students use this code to join">{{ group['join_code'] }}</span>
                     </div>
                     {% if group['description'] %}
-                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.25rem;">
+                        <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 1.25rem; line-height: 1.45;">
                             {{ group['description'] }}
                         </p>
                     {% endif %}
                 </div>
 
-                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                     <div style="font-size: 0.85rem; color: var(--text-muted);">
-                        <span>👥 {{ group['student_count'] }} Student{% if group['student_count'] != 1 %}s{% endif %}</span> &bull; 
-                        <span>📚 {{ group['assignment_count'] }} Assignment{% if group['assignment_count'] != 1 %}s{% endif %}</span>
+                        <span>{{ group['student_count'] }} Student{% if group['student_count'] != 1 %}s{% endif %}</span> &bull; 
+                        <span>{{ group['assignment_count'] }} Task{% if group['assignment_count'] != 1 %}s{% endif %}</span>
                     </div>
-                    <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" class="btn btn-secondary btn-sm">
-                        Manage Group &rarr;
-                    </a>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{{ url_for('teacher_export_group_csv', group_id=group['id']) }}" class="btn btn-secondary btn-sm" title="Export Gradebook CSV">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            CSV
+                        </a>
+                        <a href="{{ url_for('teacher_group_detail', group_id=group['id']) }}" class="btn btn-primary btn-sm">
+                            Manage &rarr;
+                        </a>
+                    </div>
                 </div>
             </div>
         {% endfor %}
     </div>
 {% else %}
     <div class="card" style="text-align: center; padding: 3rem 1rem;">
-        <h3 style="color: var(--text-main); margin-bottom: 0.5rem;">No groups created yet</h3>
-        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Create your first teaching group to invite students and assign tasks.</p>
-        <a href="{{ url_for('teacher_create_group') }}" class="btn btn-primary" style="background-color: #6d28d9;">
-            + Create Your First Group
+        <h3 style="color: var(--text-main); margin-bottom: 0.5rem;">No cohort groups created yet</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Create your first teaching group to invite students and assign coursework.</p>
+        <a href="{{ url_for('teacher_create_group') }}" class="btn btn-primary">
+            + Create First Cohort
         </a>
     </div>
 {% endif %}
+
+<script>
+function filterGroups() {
+    const q = document.getElementById('group-search').value.toLowerCase();
+    const cards = document.querySelectorAll('.group-item');
+    cards.forEach(card => {
+        const text = card.getAttribute('data-search') || '';
+        card.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+}
+</script>
 {% endblock %}

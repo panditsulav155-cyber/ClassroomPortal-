@@ -1,39 +1,115 @@
 {% extends "base.html" %}
 
-{% block title %}{{ group['name'] }} - Management{% endblock %}
+{% block title %}{{ group['name'] }} - Cohort Management{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 1.5rem;">
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
     <a href="{{ url_for('teacher_dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-        &larr; Back to My Groups
+        &larr; Back to Workspace
     </a>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('teacher_export_group_csv', group_id=group['id']) }}" class="btn btn-secondary btn-sm">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export All Grades (CSV)
+        </a>
+        <a href="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" class="btn btn-primary btn-sm">
+            + New Assignment
+        </a>
+    </div>
 </div>
 
 <!-- Group Header Card -->
-<div class="card" style="margin-bottom: 2rem;">
+<div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--primary);">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h1 style="font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem;">{{ group['name'] }}</h1>
+            <span class="badge badge-secondary" style="margin-bottom: 0.35rem;">{{ group['subject'] }}</span>
+            <h1 style="font-size: 1.85rem; font-weight: 700; margin-bottom: 0.4rem;">{{ group['name'] }}</h1>
             {% if group['description'] %}
-                <p style="color: var(--text-muted); font-size: 1rem; max-width: 700px;">{{ group['description'] }}</p>
+                <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; line-height: 1.5;">{{ group['description'] }}</p>
             {% endif %}
         </div>
-        <div style="text-align: right; background-color: #f8fafc; border: 1px solid var(--border-color); padding: 0.75rem 1.25rem; border-radius: var(--radius-md);">
-            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">
+        <div style="text-align: right; background-color: var(--bg-card-subtle); border: 1px solid var(--border-color); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 0.25rem;">
                 Student Join Code
             </div>
             <span class="code-pill">{{ group['join_code'] }}</span>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Share with students</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Share with students to enroll</div>
         </div>
     </div>
+</div>
+
+<!-- Class Announcements & Notice Board (Feature) -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            Class Notice Board ({{ announcements|length }})
+        </h2>
+        <button onclick="toggleAnnouncementForm()" class="btn btn-secondary btn-sm" id="ann-toggle-btn">
+            + Post Announcement
+        </button>
+    </div>
+
+    <!-- Collapsible New Announcement Form -->
+    <div id="announcement-form-container" style="display: none; background: var(--bg-card-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">Post Notice to Class Board</h3>
+        <form method="POST" action="{{ url_for('teacher_create_announcement', group_id=group['id']) }}">
+            <div class="form-group">
+                <label class="form-label">Notice Title <span class="required-star">*</span></label>
+                <input type="text" name="title" class="form-control" required placeholder="e.g. Schedule Change: Friday Lab Session">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notice Content <span class="required-star">*</span></label>
+                <textarea name="content" class="form-control" required placeholder="Write announcement details for all enrolled students..."></textarea>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;">
+                    <input type="checkbox" name="is_pinned" value="1">
+                    Pin notice to top of board
+                </label>
+                <button type="submit" class="btn btn-primary btn-sm">Publish Notice</button>
+            </div>
+        </form>
+    </div>
+
+    {% if announcements %}
+        {% for ann in announcements %}
+            <div class="announcement-item {% if ann['is_pinned'] %}pinned{% endif %}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                            {% if ann['is_pinned'] %}
+                                <span class="badge badge-warning" style="font-size: 0.68rem;">Pinned Notice</span>
+                            {% endif %}
+                            <strong style="font-size: 1.05rem; color: var(--text-main);">{{ ann['title'] }}</strong>
+                        </div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            Posted: {{ ann['created_at'][:16] }}
+                        </div>
+                        <p style="color: var(--text-main); font-size: 0.92rem; white-space: pre-wrap; line-height: 1.5;">{{ ann['content'] }}</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('teacher_delete_announcement', announcement_id=ann['id']) }}" onsubmit="return confirm('Delete this announcement?');">
+                        <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--danger); padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+                            Remove
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem 0;">No notices published yet. Use the button above to post bulletins for students.</p>
+    {% endif %}
 </div>
 
 <!-- Assignments Section -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Learning Activities &amp; Assignments</h2>
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+            Course Assignments ({{ assignments|length }})
+        </h2>
         <a href="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" class="btn btn-primary btn-sm">
-            + Add Assignment
+            + New Assignment
         </a>
     </div>
 
@@ -42,11 +118,11 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Title</th>
-                        <th>Due Date</th>
-                        <th>Max Points</th>
-                        <th>Submissions</th>
-                        <th>Material</th>
+                        <th>Title &amp; Scope</th>
+                        <th>Deadline</th>
+                        <th>Max Score</th>
+                        <th>Submission Rate</th>
+                        <th>Worksheet</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -55,14 +131,10 @@
                         <tr>
                             <td>
                                 <strong>{{ a['title'] }}</strong>
-                                <div style="font-size: 0.82rem; color: var(--text-muted);">{{ a['description'][:60] }}{% if a['description']|length > 60 %}...{% endif %}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ a['description'][:65] }}{% if a['description']|length > 65 %}...{% endif %}</div>
                             </td>
                             <td>
-                                {% if a['due_date'] %}
-                                    <span>{{ a['due_date'] }}</span>
-                                {% else %}
-                                    <span style="color: var(--text-muted);">No deadline</span>
-                                {% endif %}
+                                <span style="font-size: 0.88rem;">{{ a['due_date'] }}</span>
                             </td>
                             <td>{{ a['max_points'] }} pts</td>
                             <td>
@@ -73,16 +145,21 @@
                             <td>
                                 {% if a['attachment_filename'] %}
                                     <a href="{{ url_for('download_assignment_attachment', assignment_id=a['id']) }}" class="btn btn-secondary btn-sm" title="Download Material">
-                                        📎 Download
+                                        Download
                                     </a>
                                 {% else %}
                                     <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('teacher_assignment_submissions', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
-                                    Review Submissions &rarr;
-                                </a>
+                                <div style="display: flex; gap: 0.35rem;">
+                                    <a href="{{ url_for('teacher_assignment_submissions', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
+                                        Review Submissions &rarr;
+                                    </a>
+                                    <a href="{{ url_for('teacher_export_assignment_csv', assignment_id=a['id']) }}" class="btn btn-secondary btn-sm" title="Export CSV">
+                                        CSV
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
@@ -91,9 +168,9 @@
         </div>
     {% else %}
         <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-            <p style="margin-bottom: 1rem;">No assignments given in this group yet.</p>
+            <p style="margin-bottom: 1rem;">No assignments published in this cohort yet.</p>
             <a href="{{ url_for('teacher_create_assignment', group_id=group['id']) }}" class="btn btn-primary btn-sm">
-                Create First Assignment
+                Publish First Assignment
             </a>
         </div>
     {% endif %}
@@ -102,27 +179,36 @@
 <!-- Enrolled Students Section -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Enrolled Students ({{ members|length }})</h2>
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+            Enrolled Student Roster ({{ members|length }})
+        </h2>
+        <input type="text" id="roster-search" class="form-control" style="max-width: 260px; padding: 0.35rem 0.65rem; font-size: 0.85rem;" placeholder="Filter student roster..." onkeyup="filterRoster()">
     </div>
 
     {% if members %}
         <div class="table-container">
-            <table class="table">
+            <table class="table" id="roster-table">
                 <thead>
                     <tr>
                         <th>Student Name</th>
-                        <th>Email</th>
+                        <th>Gmail Address</th>
                         <th>Username</th>
                         <th>Joined Date</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for m in members %}
-                        <tr>
-                            <td><strong>{{ m['full_name'] }}</strong></td>
+                        <tr class="roster-row" data-search="{{ m['full_name']|lower }} {{ m['email']|lower }} {{ m['username']|lower }}">
+                            <td>
+                                <span class="user-badge student" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; margin-right: 0.35rem;">Student</span>
+                                <strong>{{ m['full_name'] }}</strong>
+                            </td>
                             <td>{{ m['email'] }}</td>
                             <td><code>@{{ m['username'] }}</code></td>
                             <td>{{ m['joined_at'][:10] }}</td>
+                            <td><span class="badge badge-success">Enrolled</span></td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -130,8 +216,31 @@
         </div>
     {% else %}
         <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
-            <p>No students have joined this group yet. Share Join Code: <strong>{{ group['join_code'] }}</strong> with your students.</p>
+            No students enrolled yet. Distribute Join Code <strong>{{ group['join_code'] }}</strong> to your students.
         </div>
     {% endif %}
 </div>
+
+<script>
+function toggleAnnouncementForm() {
+    const box = document.getElementById('announcement-form-container');
+    const btn = document.getElementById('ann-toggle-btn');
+    if (box.style.display === 'none') {
+        box.style.display = 'block';
+        btn.textContent = 'Cancel';
+    } else {
+        box.style.display = 'none';
+        btn.textContent = '+ Post Announcement';
+    }
+}
+
+function filterRoster() {
+    const q = document.getElementById('roster-search').value.toLowerCase();
+    const rows = document.querySelectorAll('.roster-row');
+    rows.forEach(r => {
+        const text = r.getAttribute('data-search') || '';
+        r.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

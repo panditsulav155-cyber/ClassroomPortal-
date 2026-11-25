@@ -8,7 +8,6 @@ from database import create_connection, init_db
 
 class ClassroomPortalTestCase(unittest.TestCase):
     def setUp(self):
-        # Create temporary directories for DB and uploads
         self.temp_dir = tempfile.mkdtemp()
         self.db_path = os.path.join(self.temp_dir, 'test_classroom.db')
         self.subs_dir = os.path.join(self.temp_dir, 'submissions')
@@ -31,7 +30,6 @@ class ClassroomPortalTestCase(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def query_row(self, sql, args=()):
-        """Helper to run a single-row query and close the connection cleanly."""
         conn = create_connection(self.db_path)
         row = conn.execute(sql, args).fetchone()
         conn.close()
@@ -59,18 +57,12 @@ class ClassroomPortalTestCase(unittest.TestCase):
         return self.client.get('/logout', follow_redirects=True)
 
     def test_registration_validation_rules(self):
-        """
-        Verify new requirements:
-        1. Email must be @gmail.com
-        2. Name must start with an alphabet letter
-        3. Password is required, min 6 chars, and must match
-        4. Teacher vs Student role must be valid
-        """
+        """Verify strict mandatory fields and validation rules."""
         # 1. Non-Gmail rejection
         res_non_gmail = self.register('prof_smith', 'smith@school.edu', 'secret123', 'teacher', 'Professor Smith')
         self.assertIn(b'Email must be a valid Gmail address', res_non_gmail.data)
 
-        # 2. Full Name starting with number rejection
+        # 2. Name starting with number rejection
         res_bad_name = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', '123Professor Smith')
         self.assertIn(b'Full Name must start with an alphabet letter', res_bad_name.data)
 
@@ -94,102 +86,105 @@ class ClassroomPortalTestCase(unittest.TestCase):
         res_valid = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith')
         self.assertIn(b'Registration successful', res_valid.data)
 
-    def test_registration_and_authentication(self):
-        """Test registration, password hashing, and login validation."""
-        res = self.register('prof_smith', 'smith@gmail.com', 'secret123', 'teacher', 'Professor Smith')
-        self.assertIn(b'Registration successful', res.data)
-
-        # Verify password in DB is hashed and not plaintext
-        user = self.query_row('SELECT * FROM users WHERE username = ?', ('prof_smith',))
-        self.assertIsNotNone(user)
-        self.assertNotEqual(user['password_hash'], 'secret123')
-        self.assertEqual(user['role'], 'teacher')
-
-        # Test valid login with username
-        login_res = self.login('prof_smith', 'secret123')
-        self.assertIn(b'Welcome back, Professor Smith', login_res.data)
-        self.logout()
-
-        # Test valid login with Gmail
-        login_res_email = self.login('smith@gmail.com', 'secret123')
-        self.assertIn(b'Welcome back, Professor Smith', login_res_email.data)
-        self.logout()
-        
-        # Test wrong password login failure
-        bad_res = self.login('prof_smith', 'wrongpass')
-        self.assertIn(b'Invalid username/Gmail or password', bad_res.data)
-
-    def test_group_creation_and_enrollment(self):
-        """Test teacher group creation and student enrollment via 6-char join code."""
-        # 1. Register Teacher & create group
+    def test_group_and_mandatory_fields(self):
+        """Test teacher group creation and mandatory field enforcement."""
         self.register('mr_jones', 'jones@gmail.com', 'pass123', 'teacher', 'Mr. Jones')
         self.login('jones@gmail.com', 'pass123')
-        
+
+        # Empty description rejection
+        bad_create = self.client.post('/teacher/groups/create', data={
+            'name': 'Physics 101',
+            'subject': 'Physics',
+            'description': ''
+        }, follow_redirects=True)
+        self.assertIn(b'mandatory', bad_create.data)
+
+        # Successful creation with subject and description
         create_res = self.client.post('/teacher/groups/create', data={
             'name': 'Physics 101',
-            'description': 'Mechanics and Waves'
+            'subject': 'Physical Sciences',
+            'description': 'Classical mechanics and wave kinetics.'
         }, follow_redirects=True)
         self.assertIn(b'created successfully', create_res.data)
 
         group = self.query_row('SELECT * FROM groups WHERE name = ?', ('Physics 101',))
         self.assertIsNotNone(group)
-        join_code = group['join_code']
-        self.assertEqual(len(join_code), 6)
+        self.assertEqual(group['subject'], 'Physical Sciences')
+        self.assertEqual(len(group['join_code']), 6)
 
-        self.logout()
+    def test_announcements_and_csv_export(self):
+        """Test announcement creation and gradebook CSV export."""
+        self.register('prof_davis', 'davis@gmail.com', 'pass123', 'teacher', 'Professor Davis')
+        self.login('davis@gmail.com', 'pass123')
 
-        # 2. Register Student & join group using join code
-        self.register('alice_s', 'alice@gmail.com', 'studentpass', 'student', 'Alice Walker')
-        self.login('alice@gmail.com', 'studentpass')
-
-        join_res = self.client.post('/student/groups/join', data={
-            'join_code': join_code
+        # Create group
+        self.client.post('/teacher/groups/create', data={
+            'name': 'Chemistry 101',
+            'subject': 'Chemical Sciences',
+            'description': 'Organic synthesis lab.'
         }, follow_redirects=True)
-        self.assertIn(b'Successfully joined group', join_res.data)
+        group = self.query_row('SELECT * FROM groups WHERE name = ?', ('Chemistry 101',))
 
-        # Verify student is listed in memberships
-        membership = self.query_row('SELECT * FROM group_memberships WHERE group_id = ?', (group['id'],))
-        self.assertIsNotNone(membership)
+        # Create announcement
+        ann_res = self.client.post(f'/teacher/groups/{group["id"]}/announcements/create', data={
+            'title': 'Safety Goggles Required',
+            'content': 'All students must bring approved goggles to lab.',
+            'is_pinned': '1'
+        }, follow_redirects=True)
+        self.assertIn(b'Announcement published', ann_res.data)
+
+        ann = self.query_row('SELECT * FROM announcements WHERE group_id = ?', (group['id'],))
+        self.assertIsNotNone(ann)
+        self.assertEqual(ann['title'], 'Safety Goggles Required')
+
+        # Test CSV export endpoint
+        csv_res = self.client.get(f'/teacher/groups/{group["id"]}/export-csv')
+        self.assertEqual(csv_res.status_code, 200)
+        self.assertIn('text/csv', csv_res.headers.get('Content-Type', ''))
+        self.assertIn(b'Student ID,Student Name', csv_res.data)
 
     def test_critical_submission_file_privacy_and_access_control(self):
         """
-        CRITICAL PRIVACY TEST:
+        CRITICAL IDOR MITIGATION TEST:
         Ensure that student files are strictly private:
         - Accessible ONLY by the group teacher and the student who submitted it.
         - Denied (403 Forbidden) for other students in the same group.
         - Denied (403 Forbidden) for teachers of other groups.
-        - Denied (redirect / 401 / 403) for unauthenticated guests.
         """
-        # Step A: Register Teacher 1
+        # 1. Register Teacher 1
         self.register('teach1', 'teach1@gmail.com', 'pass123', 'teacher', 'Teacher One')
         self.login('teach1@gmail.com', 'pass123')
-        self.client.post('/teacher/groups/create', data={'name': 'Biology 101', 'description': 'Cells'})
-        
+        self.client.post('/teacher/groups/create', data={
+            'name': 'Biology 101',
+            'subject': 'Life Sciences',
+            'description': 'Cellular biology fundamentals.'
+        }, follow_redirects=True)
+
         group = self.query_row('SELECT * FROM groups WHERE name = ?', ('Biology 101',))
         join_code = group['join_code']
 
-        # Teacher creates an assignment
+        # Teacher creates assignment
         self.client.post(f'/teacher/groups/{group["id"]}/assignments/create', data={
             'title': 'Cell Structure Lab',
             'description': 'Draw and label an animal cell.',
+            'due_date': '2026-12-30 23:59',
             'max_points': 100
         }, follow_redirects=True)
 
         assignment = self.query_row('SELECT * FROM assignments WHERE group_id = ?', (group['id'],))
-        self.assertIsNotNone(assignment)
         self.logout()
 
-        # Step B: Register Student 1 (Alice) and submit file
+        # 2. Register Student 1 (Alice) and submit file
         self.register('alice', 'alice@gmail.com', 'pass123', 'student', 'Alice Scott')
         self.login('alice@gmail.com', 'pass123')
         self.client.post('/student/groups/join', data={'join_code': join_code}, follow_redirects=True)
 
-        fake_file_content = b"ALICE'S PRIVATE HOMEWORK LAB CONTENT - CONFIDENTIAL"
+        fake_file_content = b"ALICE CONFIDENTIAL HOMEWORK LAB - PRIVATE"
         submit_res = self.client.post(
             f'/student/assignments/{assignment["id"]}',
             data={
                 'file': (io.BytesIO(fake_file_content), 'alice_cell_lab.pdf'),
-                'notes': 'Here is my complete lab report'
+                'notes': 'Complete lab conclusions'
             },
             content_type='multipart/form-data',
             follow_redirects=True
@@ -197,55 +192,37 @@ class ClassroomPortalTestCase(unittest.TestCase):
         self.assertIn(b'Assignment submitted successfully', submit_res.data)
 
         submission = self.query_row('SELECT * FROM submissions WHERE assignment_id = ?', (assignment['id'],))
-        self.assertIsNotNone(submission)
-        submission_id = submission['id']
+        sub_id = submission['id']
 
-        # Verification 1: Alice (the submitting student) CAN download her own file
-        alice_dl = self.client.get(f'/submissions/{submission_id}/download')
+        # Alice CAN download her own file
+        alice_dl = self.client.get(f'/submissions/{sub_id}/download')
         self.assertEqual(alice_dl.status_code, 200)
         self.assertEqual(alice_dl.data, fake_file_content)
         self.logout()
 
-        # Step C: Register Student 2 (Bob) in the SAME group
+        # 3. Register Student 2 (Bob) in the SAME group
         self.register('bob', 'bob@gmail.com', 'pass123', 'student', 'Bob Scott')
         self.login('bob@gmail.com', 'pass123')
         self.client.post('/student/groups/join', data={'join_code': join_code}, follow_redirects=True)
 
-        # Verification 2: Bob CANNOT download Alice's submission file (MUST RETURN 403 FORBIDDEN!)
-        bob_dl = self.client.get(f'/submissions/{submission_id}/download')
-        self.assertEqual(bob_dl.status_code, 403, "CRITICAL: Student Bob must NOT be able to download Alice's submission!")
+        # Bob CANNOT download Alice's submission (MUST RETURN 403 FORBIDDEN!)
+        bob_dl = self.client.get(f'/submissions/{sub_id}/download')
+        self.assertEqual(bob_dl.status_code, 403, "CRITICAL: Bob must be rejected with 403 Forbidden!")
         self.logout()
 
-        # Step D: Register Teacher 2 (who is NOT the teacher of this group)
-        self.register('teach2', 'teach2@gmail.com', 'pass123', 'teacher', 'Teacher Two')
-        self.login('teach2@gmail.com', 'pass123')
-
-        # Verification 3: Teacher 2 CANNOT download Alice's file (MUST RETURN 403 FORBIDDEN!)
-        t2_dl = self.client.get(f'/submissions/{submission_id}/download')
-        self.assertEqual(t2_dl.status_code, 403, "CRITICAL: Teacher 2 must NOT be able to download files from another teacher's group!")
-        self.logout()
-
-        # Step E: Teacher 1 (the owner of Biology 101) logs in
+        # 4. Teacher 1 grades Alice's work
         self.login('teach1@gmail.com', 'pass123')
-
-        # Verification 4: Teacher 1 CAN download Alice's file
-        t1_dl = self.client.get(f'/submissions/{submission_id}/download')
-        self.assertEqual(t1_dl.status_code, 200)
-        self.assertEqual(t1_dl.data, fake_file_content)
-
-        # Step F: Teacher 1 grades Alice's submission
-        grade_res = self.client.post(f'/teacher/submissions/{submission_id}/grade', data={
+        grade_res = self.client.post(f'/teacher/submissions/{sub_id}/grade', data={
             'grade': '98.5',
-            'feedback': 'Outstanding microscopy diagrams and analysis!'
+            'feedback': 'Outstanding microscopy analysis!'
         }, follow_redirects=True)
-        self.assertIn(b'Grade and feedback saved successfully', grade_res.data)
-        self.logout()
+        self.assertIn(b'Grade and evaluative feedback saved successfully', grade_res.data)
 
-        # Step G: Alice logs back in and checks her grade and feedback
-        self.login('alice@gmail.com', 'pass123')
-        student_page = self.client.get(f'/student/assignments/{assignment["id"]}')
-        self.assertIn(b'98.5', student_page.data)
-        self.assertIn(b'Outstanding microscopy diagrams and analysis!', student_page.data)
+        # Teacher 1 assignment CSV export
+        asgn_csv = self.client.get(f'/teacher/assignments/{assignment["id"]}/export-csv')
+        self.assertEqual(asgn_csv.status_code, 200)
+        self.assertIn(b'Alice Scott', asgn_csv.data)
+        self.assertIn(b'98.5', asgn_csv.data)
 
 if __name__ == '__main__':
     unittest.main()

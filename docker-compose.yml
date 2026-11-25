@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: classroom_portal_app
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - SECRET_KEY=production-classroom-secret-key-2026
+      - DATABASE_PATH=/app/data/classroom.db
+    volumes:
+      - portal_data:/app/data
+      - portal_uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  portal_data:
+  portal_uploads:

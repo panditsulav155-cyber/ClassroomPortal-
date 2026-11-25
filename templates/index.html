@@ -1,45 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome{% endblock %}
+{% block title %}Welcome to ClassroomPortal{% endblock %}
 
 {% block content %}
-<div style="text-align: center; padding: 3rem 1rem; max-width: 860px; margin: 0 auto;">
-    <h1 style="font-size: 2.5rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">
-        Teaching &amp; Learning Activities Hub
+<div style="text-align: center; padding: 3rem 1rem 2rem 1rem; max-width: 860px; margin: 0 auto;">
+    <span class="badge badge-success" style="margin-bottom: 1rem; padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+        Enterprise Academic Platform
+    </span>
+    
+    <h1 style="font-size: 2.75rem; font-weight: 800; color: var(--text-main); margin-bottom: 1.25rem; letter-spacing: -0.02em;">
+        Confidential Academic Learning &amp; Assessment Management
     </h1>
-    <p style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 2rem; line-height: 1.6;">
-        A specialized academic platform connecting teachers and students. Teachers organize subject cohorts and issue coursework with syllabus attachments. Students enroll using 6-character Join Codes and submit homework files in <strong>strict confidentiality</strong>.
+    
+    <p style="font-size: 1.15rem; color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.65; max-width: 720px; margin-left: auto; margin-right: auto;">
+        A specialized educational portal where educators orchestrate coursework with attached syllabus materials, and enrolled students submit homework in strict confidentiality, protected by our Dual-Key security architecture.
     </p>
 
-    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 3rem; flex-wrap: wrap;">
-        <a href="{{ url_for('register') }}" class="btn btn-primary" style="padding: 0.85rem 1.85rem; font-size: 1.05rem;">
-            Create Free Account (Register)
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 3.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary" style="padding: 0.85rem 2rem; font-size: 1.05rem;">
+            Create Free Account
         </a>
-        <a href="{{ url_for('login') }}" class="btn btn-secondary" style="padding: 0.85rem 1.85rem; font-size: 1.05rem;">
-            Existing User Log In
+        <a href="{{ url_for('login') }}" class="btn btn-secondary" style="padding: 0.85rem 2rem; font-size: 1.05rem;">
+            Sign In to Portal
         </a>
     </div>
 
     <div class="grid grid-3" style="text-align: left;">
-        <div class="card" style="border-top: 4px solid #6d28d9;">
-            <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">👨‍🏫</div>
-            <h3 style="margin-bottom: 0.5rem; color: #6d28d9;">Teacher Groups</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                Create isolated subject groups with custom 6-char Join Codes. Publish assignments with instructions and resource files.
+        <div class="card" style="border-top: 4px solid var(--primary);">
+            <div style="color: var(--primary); margin-bottom: 0.75rem;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-main);">Instructor Cohorts</h3>
+            <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+                Create isolated subject groups with unique 6-character Join Codes. Distribute syllabus files, post announcements, and evaluate submissions.
             </p>
         </div>
-        <div class="card" style="border-top: 4px solid #0284c7;">
-            <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">👨‍🎓</div>
-            <h3 style="margin-bottom: 0.5rem; color: #0284c7;">Student Submissions</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                Join teacher groups using simple join codes, view deadlines, upload homework solutions, and track private grades and remarks.
+
+        <div class="card" style="border-top: 4px solid var(--accent);">
+            <div style="color: var(--accent); margin-bottom: 0.75rem;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-main);">Student Submissions</h3>
+            <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+                Enroll via Join Codes, track upcoming deadlines, submit coursework solutions with student notes, and view personal evaluative feedback.
             </p>
         </div>
-        <div class="card" style="border-top: 4px solid #16a34a;">
-            <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">🔒</div>
-            <h3 style="margin-bottom: 0.5rem; color: #16a34a;">Strict Confidentiality</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
-                Dual-Key Gatekeeper ensures student homework is accessible exclusively by the class teacher and submitting student. Zero peer leaks.
+
+        <div class="card" style="border-top: 4px solid var(--success);">
+            <div style="color: var(--success); margin-bottom: 0.75rem;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-main);">Zero-Leakage Privacy</h3>
+            <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+                Dual-Key Gatekeeper strictly verifies Teacher ownership and Student authorship before streaming files, rejecting peer snooping with HTTP 403 Forbidden.
             </p>
         </div>
     </div>

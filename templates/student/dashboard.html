@@ -1,41 +1,97 @@
 {% extends "base.html" %}
 
-{% block title %}Student Dashboard{% endblock %}
+{% block title %}Student Learning Hub{% endblock %}
 
 {% block content %}
 <div class="role-hero student-hero">
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <span style="font-size: 2.2rem;">👨‍🎓</span>
+    <div style="display: flex; align-items: center; gap: 0.9rem;">
+        <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--accent); display: flex; align-items: center; justify-content: center; color: white;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+        </div>
         <div>
-            <h1 style="font-size: 1.6rem; font-weight: 700; color: #0284c7; margin: 0;">Student Learning Hub &bull; My Classes</h1>
-            <p style="color: #64748b; margin: 0.25rem 0 0 0; font-size: 0.95rem;">
-                Join teacher groups using 6-character Join Codes, submit homework files, and review private grades and remarks.
+            <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--accent); margin: 0;">Student Learning Hub</h1>
+            <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.95rem;">
+                Enroll in classes, complete coursework, and review confidential evaluations.
             </p>
         </div>
     </div>
-    <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="white-space: nowrap; background-color: #0284c7;">
-        + Join Group with Code
+    <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="white-space: nowrap; background-color: var(--accent);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Join Cohort Group
     </a>
+</div>
+
+<!-- Student Analytics Row -->
+<div class="grid grid-4" style="margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon accent">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ groups|length }}</div>
+            <div class="stat-label">Enrolled Cohorts</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ total_tasks }}</div>
+            <div class="stat-label">Total Coursework</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ completed_count }}</div>
+            <div class="stat-label">Submitted Tasks</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{% if avg_score %}{{ avg_score }}%{% else %}N/A{% endif %}</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Search -->
+<div class="search-container">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <input type="text" id="student-search" class="search-input" placeholder="Search enrolled classes or coursework assignments..." onkeyup="filterStudentDashboard()">
 </div>
 
 <!-- Enrolled Groups Section -->
 <div style="margin-bottom: 2.5rem;">
-    <h2 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem;">My Enrolled Groups</h2>
+    <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem;">My Enrolled Cohorts</h2>
     {% if groups %}
-        <div class="grid grid-3">
+        <div class="grid grid-3" id="enrolled-groups-container">
             {% for g in groups %}
-                <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #0284c7;">
+                <div class="card student-group-card" data-search="{{ g['name']|lower }} {{ g['subject']|lower }} {{ g['teacher_name']|lower }}" style="display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--accent);">
                     <div>
-                        <h3 style="font-size: 1.15rem; font-weight: 600; margin-bottom: 0.25rem;">
+                        <span class="badge badge-secondary" style="font-size: 0.72rem; margin-bottom: 0.35rem;">{{ g['subject'] }}</span>
+                        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">
                             <a href="{{ url_for('student_group_detail', group_id=g['id']) }}" style="color: var(--text-main); text-decoration: none;">
                                 {{ g['name'] }}
                             </a>
                         </h3>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                            Instructor: <strong>👨‍🏫 {{ g['teacher_name'] }}</strong>
+                            Instructor: <strong>{{ g['teacher_name'] }}</strong>
                         </div>
                         {% if g['description'] %}
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.45;">
                                 {{ g['description'][:80] }}{% if g['description']|length > 80 %}...{% endif %}
                             </p>
                         {% endif %}
@@ -43,7 +99,7 @@
                     <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.8rem; color: var(--text-muted);">{{ g['assignment_count'] }} Task{% if g['assignment_count'] != 1 %}s{% endif %}</span>
                         <a href="{{ url_for('student_group_detail', group_id=g['id']) }}" class="btn btn-secondary btn-sm">
-                            Open Group &rarr;
+                            Open Cohort &rarr;
                         </a>
                     </div>
                 </div>
@@ -52,7 +108,7 @@
     {% else %}
         <div class="card" style="text-align: center; padding: 2.5rem 1rem;">
             <p style="color: var(--text-muted); margin-bottom: 1rem;">You are not enrolled in any teaching groups yet.</p>
-            <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="background-color: #0284c7;">
+            <a href="{{ url_for('student_join_group') }}" class="btn btn-primary" style="background-color: var(--accent);">
                 Join a Group Using Code
             </a>
         </div>
@@ -62,7 +118,10 @@
 <!-- Active & Upcoming Assignments -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">All Course Activities &amp; Assignments</h2>
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+            All Coursework Tasks &amp; Submissions
+        </h2>
     </div>
 
     {% if assignments %}
@@ -71,36 +130,32 @@
                 <thead>
                     <tr>
                         <th>Assignment</th>
-                        <th>Group / Instructor</th>
-                        <th>Due Date</th>
+                        <th>Cohort &amp; Instructor</th>
+                        <th>Deadline</th>
                         <th>Status</th>
-                        <th>Grade</th>
+                        <th>Evaluation</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for a in assignments %}
-                        <tr>
+                        <tr class="assignment-row" data-search="{{ a['title']|lower }} {{ a['group_name']|lower }} {{ a['teacher_name']|lower }}">
                             <td>
                                 <strong>{{ a['title'] }}</strong>
                             </td>
                             <td>
                                 <div>{{ a['group_name'] }}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-muted);">👨‍🏫 {{ a['teacher_name'] }}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-muted);">Instructor: {{ a['teacher_name'] }}</div>
                             </td>
                             <td>
-                                {% if a['due_date'] %}
-                                    <span>{{ a['due_date'] }}</span>
-                                {% else %}
-                                    <span style="color: var(--text-muted);">No deadline</span>
-                                {% endif %}
+                                <span style="font-size: 0.88rem;">{{ a['due_date'] }}</span>
                             </td>
                             <td>
                                 {% if a['submission_id'] %}
                                     {% if a['grade'] is not none %}
                                         <span class="badge badge-success">Graded</span>
                                     {% else %}
-                                        <span class="badge badge-warning">Submitted (Pending Review)</span>
+                                        <span class="badge badge-warning">Submitted (Awaiting Score)</span>
                                     {% endif %}
                                 {% else %}
                                     <span class="badge badge-danger">Not Submitted</span>
@@ -114,8 +169,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
-                                    {% if a['submission_id'] %}View Submission{% else %}Submit Work{% endif %} &rarr;
+                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm" style="{% if not a['submission_id'] %}background-color: var(--accent);{% endif %}">
+                                    {% if a['submission_id'] %}View Submission{% else %}Submit Homework{% endif %} &rarr;
                                 </a>
                             </td>
                         </tr>
@@ -125,8 +180,26 @@
         </div>
     {% else %}
         <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
-            No assignments found. Once you join groups, your tasks will appear here.
+            No coursework tasks assigned yet.
         </div>
     {% endif %}
 </div>
+
+<script>
+function filterStudentDashboard() {
+    const q = document.getElementById('student-search').value.toLowerCase();
+    
+    // Filter groups
+    document.querySelectorAll('.student-group-card').forEach(c => {
+        const text = c.getAttribute('data-search') || '';
+        c.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+
+    // Filter assignments
+    document.querySelectorAll('.assignment-row').forEach(r => {
+        const text = r.getAttribute('data-search') || '';
+        r.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}

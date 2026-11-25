@@ -13,7 +13,7 @@ def create_connection(path=None):
     return conn
 
 def init_db(db_path=None):
-    """Initializes the database schema."""
+    """Initializes and migrates the database schema."""
     conn = create_connection(db_path)
     with conn:
         conn.executescript('''
@@ -30,7 +30,8 @@ def init_db(db_path=None):
         CREATE TABLE IF NOT EXISTS groups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            description TEXT,
+            subject TEXT NOT NULL DEFAULT 'General',
+            description TEXT NOT NULL,
             join_code TEXT UNIQUE NOT NULL,
             teacher_id INTEGER NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -52,7 +53,7 @@ def init_db(db_path=None):
             group_id INTEGER NOT NULL,
             title TEXT NOT NULL,
             description TEXT NOT NULL,
-            due_date TEXT,
+            due_date TEXT NOT NULL,
             max_points INTEGER DEFAULT 100,
             attachment_filename TEXT,
             original_attachment_name TEXT,
@@ -66,7 +67,7 @@ def init_db(db_path=None):
             student_id INTEGER NOT NULL,
             stored_filename TEXT NOT NULL,
             original_filename TEXT NOT NULL,
-            notes TEXT,
+            notes TEXT NOT NULL,
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             grade REAL,
             feedback TEXT,
@@ -75,9 +76,26 @@ def init_db(db_path=None):
             FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
             UNIQUE(assignment_id, student_id)
         );
+
+        CREATE TABLE IF NOT EXISTS announcements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            is_pinned INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+        );
         ''')
+
+        # Run safe migrations for existing SQLite databases
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(groups)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'subject' not in columns:
+            cursor.execute("ALTER TABLE groups ADD COLUMN subject TEXT NOT NULL DEFAULT 'General'")
     conn.close()
 
 if __name__ == '__main__':
     init_db()
-    print("Database initialized successfully at:", DATABASE_PATH)
+    print("Database initialized and verified successfully at:", DATABASE_PATH)

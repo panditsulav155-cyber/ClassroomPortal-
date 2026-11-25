@@ -1,34 +1,63 @@
 {% extends "base.html" %}
 
-{% block title %}{{ group['name'] }} - Group Overview{% endblock %}
+{% block title %}{{ group['name'] }} - Cohort Portal{% endblock %}
 
 {% block content %}
 <div style="margin-bottom: 1.5rem;">
     <a href="{{ url_for('student_dashboard') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-        &larr; Back to Dashboard
+        &larr; Back to Learning Hub
     </a>
 </div>
 
-<div class="card" style="margin-bottom: 2rem;">
+<!-- Group Header Card -->
+<div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--accent);">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
         <div>
+            <span class="badge badge-secondary" style="margin-bottom: 0.35rem;">{{ group['subject'] }}</span>
             <h1 style="font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem;">{{ group['name'] }}</h1>
-            <div style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.5rem;">
-                Teacher: <strong>{{ group['teacher_name'] }}</strong> ({{ group['teacher_email'] }})
-            </div>
-            {% if group['description'] %}
-                <p style="color: var(--text-muted); font-size: 0.95rem;">{{ group['description'] }}</p>
-            {% endif %}
+            <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.5;">{{ group['description'] }}</p>
         </div>
-        <div>
-            <span class="badge badge-secondary" style="font-size: 0.85rem;">Enrolled</span>
+        <div style="text-align: right; background-color: var(--bg-card-subtle); border: 1px solid var(--border-color); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">Assigned Instructor</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">{{ group['teacher_name'] }}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">{{ group['teacher_email'] }}</div>
         </div>
     </div>
 </div>
 
+<!-- Announcements Board -->
+{% if announcements %}
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+            <h2 class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                Instructor Notices &amp; Bulletins
+            </h2>
+        </div>
+        {% for ann in announcements %}
+            <div class="announcement-item {% if ann['is_pinned'] %}pinned{% endif %}">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    {% if ann['is_pinned'] %}
+                        <span class="badge badge-warning" style="font-size: 0.68rem;">Pinned Notice</span>
+                    {% endif %}
+                    <strong style="font-size: 1.05rem; color: var(--text-main);">{{ ann['title'] }}</strong>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                    Posted: {{ ann['created_at'][:16] }}
+                </div>
+                <p style="color: var(--text-main); font-size: 0.92rem; white-space: pre-wrap; line-height: 1.5;">{{ ann['content'] }}</p>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<!-- Course Assignments Section -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Group Assignments</h2>
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+            Course Assignments ({{ assignments|length }})
+        </h2>
     </div>
 
     {% if assignments %}
@@ -37,10 +66,9 @@
                 <thead>
                     <tr>
                         <th>Assignment</th>
-                        <th>Due Date</th>
-                        <th>Points</th>
-                        <th>My Status</th>
-                        <th>Grade</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                        <th>My Evaluation</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -49,19 +77,18 @@
                         <tr>
                             <td>
                                 <strong>{{ a['title'] }}</strong>
-                                <div style="font-size: 0.82rem; color: var(--text-muted);">{{ a['description'][:70] }}{% if a['description']|length > 70 %}...{% endif %}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ a['description'][:70] }}{% if a['description']|length > 70 %}...{% endif %}</div>
                             </td>
                             <td>
-                                {% if a['due_date'] %}
-                                    <span>{{ a['due_date'] }}</span>
-                                {% else %}
-                                    <span style="color: var(--text-muted);">No deadline</span>
-                                {% endif %}
+                                <span style="font-size: 0.88rem;">{{ a['due_date'] }}</span>
                             </td>
-                            <td>{{ a['max_points'] }} pts</td>
                             <td>
                                 {% if a['submission_id'] %}
-                                    <span class="badge badge-success">Submitted</span>
+                                    {% if a['grade'] is not none %}
+                                        <span class="badge badge-success">Graded</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Submitted (Under Review)</span>
+                                    {% endif %}
                                 {% else %}
                                     <span class="badge badge-danger">Not Submitted</span>
                                 {% endif %}
@@ -69,13 +96,16 @@
                             <td>
                                 {% if a['grade'] is not none %}
                                     <strong style="color: var(--primary);">{{ a['grade'] }} / {{ a['max_points'] }}</strong>
+                                    {% if a['feedback'] %}
+                                        <div style="font-size: 0.78rem; color: var(--text-muted); max-width: 180px;">"{{ a['feedback'] }}"</div>
+                                    {% endif %}
                                 {% else %}
-                                    <span style="color: var(--text-muted);">-</span>
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Pending</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm">
-                                    {% if a['submission_id'] %}View Submission{% else %}Submit{% endif %} &rarr;
+                                <a href="{{ url_for('student_assignment_detail', assignment_id=a['id']) }}" class="btn btn-primary btn-sm" style="{% if not a['submission_id'] %}background-color: var(--accent);{% endif %}">
+                                    {% if a['submission_id'] %}View Submission{% else %}Submit Homework{% endif %} &rarr;
                                 </a>
                             </td>
                         </tr>
@@ -84,8 +114,8 @@
             </table>
         </div>
     {% else %}
-        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
-            No assignments have been posted in this group yet.
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+            No coursework assignments published for this cohort yet.
         </div>
     {% endif %}
 </div>

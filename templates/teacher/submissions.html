@@ -3,42 +3,40 @@
 {% block title %}Submissions - {{ assignment['title'] }}{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 1.5rem;">
+<div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
     <a href="{{ url_for('teacher_group_detail', group_id=assignment['group_id']) }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
-        &larr; Back to Group: {{ assignment['group_name'] }}
+        &larr; Back to {{ assignment['group_name'] }}
+    </a>
+    <a href="{{ url_for('teacher_export_assignment_csv', assignment_id=assignment['id']) }}" class="btn btn-secondary btn-sm">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Export Roster to CSV
     </a>
 </div>
 
-<!-- Assignment Header Card -->
-<div class="card" style="margin-bottom: 2rem;">
+<!-- Assignment Overview Card -->
+<div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--primary);">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--primary); text-transform: uppercase; margin-bottom: 0.25rem;">
-                {{ assignment['group_name'] }} &bull; Submissions Review
-            </div>
+            <span class="badge badge-secondary" style="margin-bottom: 0.35rem;">{{ assignment['group_name'] }}</span>
             <h1 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">{{ assignment['title'] }}</h1>
-            <p style="color: var(--text-muted); font-size: 0.95rem; white-space: pre-line;">{{ assignment['description'] }}</p>
+            <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 720px; line-height: 1.5;">{{ assignment['description'] }}</p>
         </div>
-        <div style="text-align: right;">
-            <div style="margin-bottom: 0.5rem;">
-                <span class="badge badge-secondary" style="font-size: 0.85rem;">Max Points: {{ assignment['max_points'] }}</span>
-            </div>
-            {% if assignment['due_date'] %}
-                <div style="font-size: 0.85rem; color: var(--text-muted);">
-                    Due: <strong>{{ assignment['due_date'] }}</strong>
-                </div>
-            {% endif %}
-            <div style="margin-top: 0.5rem;">
-                <span class="privacy-badge">🔒 Confidential: Student files are accessible only by you</span>
-            </div>
+        <div style="text-align: right; background-color: var(--bg-card-subtle); border: 1px solid var(--border-color); padding: 0.85rem 1.25rem; border-radius: var(--radius-md);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Evaluation Benchmark</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--primary);">{{ assignment['max_points'] }} Points</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Due: {{ assignment['due_date'] }}</div>
         </div>
     </div>
 </div>
 
-<!-- Student Submissions Table -->
+<!-- Submissions & Grading Roster -->
 <div class="card">
     <div class="card-header">
-        <h2 class="card-title">Student Submissions ({{ students|length }})</h2>
+        <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line></svg>
+            Student Homework Submissions ({{ submitted_count }} / {{ total_roster }})
+        </h2>
+        <span class="badge badge-success">{{ graded_count }} Evaluated</span>
     </div>
 
     {% if students %}
@@ -46,10 +44,13 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th style="width: 22%;">Student</th>
-                        <th style="width: 15%;">Status / Submitted</th>
-                        <th style="width: 23%;">Submitted File</th>
-                        <th style="width: 40%;">Grading &amp; Feedback</th>
+                        <th>Enrolled Student</th>
+                        <th>Submission Status</th>
+                        <th>Timeliness</th>
+                        <th>Homework Solution</th>
+                        <th>Student Remarks</th>
+                        <th>Score &amp; Remarks</th>
+                        <th>Evaluation Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,47 +62,66 @@
                             </td>
                             <td>
                                 {% if st['submission_id'] %}
-                                    <span class="badge badge-success">Submitted</span>
-                                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.25rem;">
-                                        {{ st['submitted_at'][:16] }}
-                                    </div>
-                                {% else %}
-                                    <span class="badge badge-danger">Not Submitted</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if st['submission_id'] %}
-                                    <div style="margin-bottom: 0.4rem;">
-                                        <a href="{{ url_for('download_submission_file', submission_id=st['submission_id']) }}" class="btn btn-primary btn-sm" title="Download securely">
-                                            📥 {{ st['original_filename'] }}
-                                        </a>
-                                    </div>
-                                    {% if st['notes'] %}
-                                        <div style="font-size: 0.82rem; color: var(--text-muted); background: #f8fafc; padding: 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                                            <strong>Note:</strong> {{ st['notes'] }}
-                                        </div>
+                                    {% if st['grade'] is not none %}
+                                        <span class="badge badge-success">Graded</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Needs Review</span>
                                     {% endif %}
                                 {% else %}
-                                    <span style="color: var(--text-muted); font-size: 0.85rem;">No file uploaded</span>
+                                    <span class="badge badge-danger">Missing</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if st['submission_id'] %}
-                                    <form method="POST" action="{{ url_for('teacher_grade_submission', submission_id=st['submission_id']) }}" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                            <input type="number" step="0.5" name="grade" class="form-control" style="width: 90px; padding: 0.4rem 0.5rem;" placeholder="Score" value="{{ st['grade'] if st['grade'] is not none else '' }}" max="{{ assignment['max_points'] }}" min="0">
-                                            <span style="font-size: 0.85rem; color: var(--text-muted);">/ {{ assignment['max_points'] }}</span>
-                                            <button type="submit" class="btn btn-success btn-sm" style="margin-left: auto;">Save Grade</button>
-                                        </div>
-                                        <input type="text" name="feedback" class="form-control" style="padding: 0.4rem 0.5rem; font-size: 0.85rem;" placeholder="Feedback or comments for student..." value="{{ st['feedback'] or '' }}">
-                                        {% if st['graded_at'] %}
-                                            <span style="font-size: 0.75rem; color: var(--success); font-weight: 500;">
-                                                ✓ Graded on {{ st['graded_at'][:16] }}
-                                            </span>
-                                        {% endif %}
-                                    </form>
+                                    {% set timeliness = check_timeliness(st['submitted_at'], assignment['due_date']) %}
+                                    {% if timeliness == 'Late Submission' %}
+                                        <span class="badge badge-warning" style="font-size: 0.7rem;">Late Submission</span>
+                                    {% else %}
+                                        <span class="badge badge-success" style="font-size: 0.7rem;">On Time</span>
+                                    {% endif %}
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ st['submitted_at'][:16] }}</div>
                                 {% else %}
-                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Awaiting student submission</span>
+                                    <span style="color: var(--text-muted); font-size: 0.8rem;">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if st['submission_id'] %}
+                                    <a href="{{ url_for('download_submission_file', submission_id=st['submission_id']) }}" class="btn btn-secondary btn-sm" title="Download Student File">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        Download
+                                    </a>
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">No file</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if st['notes'] %}
+                                    <div style="font-size: 0.85rem; max-width: 220px; line-height: 1.35; color: var(--text-main);">
+                                        "{{ st['notes'] }}"
+                                    </div>
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">None</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if st['grade'] is not none %}
+                                    <div style="font-weight: 700; color: var(--primary); font-size: 1.05rem;">
+                                        {{ st['grade'] }} / {{ assignment['max_points'] }}
+                                    </div>
+                                    {% if st['feedback'] %}
+                                        <div style="font-size: 0.78rem; color: var(--text-muted); max-width: 180px;">"{{ st['feedback'] }}"</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Not Scored</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if st['submission_id'] %}
+                                    <button class="btn btn-primary btn-sm" onclick="openGradeModal('{{ st['submission_id'] }}', '{{ st['full_name'] }}', '{{ st['grade'] or '' }}', '{{ st['feedback'] or '' }}')">
+                                        {% if st['grade'] is not none %}Edit Grade{% else %}Assign Grade{% endif %}
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled style="opacity: 0.5;">Awaiting Work</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -110,9 +130,49 @@
             </table>
         </div>
     {% else %}
-        <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
-            No students enrolled in this group yet.
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+            No students enrolled in this cohort yet.
         </div>
     {% endif %}
 </div>
+
+<!-- Modal Dialog for Grading -->
+<div id="grade-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 480px; width: 90%; margin: auto; background: var(--bg-card);">
+        <div class="card-header">
+            <h3 class="card-title" id="modal-student-name">Grade Student Submission</h3>
+            <button onclick="closeGradeModal()" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem;">X</button>
+        </div>
+        <form id="modal-grade-form" method="POST" action="">
+            <div class="form-group">
+                <label class="form-label" for="modal-grade-input">Numerical Score (0 - {{ assignment['max_points'] }}) <span class="required-star">*</span></label>
+                <input type="number" step="0.5" id="modal-grade-input" name="grade" class="form-control" required min="0" max="{{ assignment['max_points'] }}" placeholder="Enter score">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="modal-feedback-input">Evaluative Feedback Remarks <span class="required-star">*</span></label>
+                <textarea id="modal-feedback-input" name="feedback" class="form-control" required placeholder="Provide actionable constructive feedback..."></textarea>
+            </div>
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Assessment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openGradeModal(submissionId, studentName, currentGrade, currentFeedback) {
+    const modal = document.getElementById('grade-modal');
+    const form = document.getElementById('modal-grade-form');
+    form.action = '/teacher/submissions/' + submissionId + '/grade';
+    document.getElementById('modal-student-name').textContent = 'Grade: ' + studentName;
+    document.getElementById('modal-grade-input').value = currentGrade;
+    document.getElementById('modal-feedback-input').value = currentFeedback;
+    modal.style.display = 'flex';
+}
+
+function closeGradeModal() {
+    document.getElementById('grade-modal').style.display = 'none';
+}
+</script>
 {% endblock %}

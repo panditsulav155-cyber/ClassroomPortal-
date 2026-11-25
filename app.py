@@ -1,5 +1,7 @@
 import os
 import re
+import csv
+import io
 import secrets
 import uuid
 from functools import wraps
@@ -7,7 +9,7 @@ from datetime import datetime
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    flash, session, abort, send_from_directory, g
+    flash, session, abort, send_from_directory, g, Response
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -22,11 +24,37 @@ os.makedirs(MATERIALS_FOLDER, exist_ok=True)
 os.makedirs(SUBMISSIONS_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'classroom-secret-key-2026')
+app.secret_key = os.environ.get('SECRET_KEY', 'classroom-production-key-2026-secure')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB max upload
-app.config['DATABASE_PATH'] = DATABASE_PATH
+app.config['DATABASE_PATH'] = os.environ.get('DATABASE_PATH', DATABASE_PATH)
 app.config['MATERIALS_FOLDER'] = MATERIALS_FOLDER
 app.config['SUBMISSIONS_FOLDER'] = SUBMISSIONS_FOLDER
+
+# Production security headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+# Timeliness helper for templates
+def check_timeliness(submitted_at, due_date):
+    if not submitted_at or not due_date:
+        return 'On Time'
+    try:
+        clean_sub = submitted_at.replace('T', ' ')[:16]
+        clean_due = due_date.replace('T', ' ')[:16]
+        sub_dt = datetime.strptime(clean_sub, '%Y-%m-%d %H:%M')
+        due_dt = datetime.strptime(clean_due, '%Y-%m-%d %H:%M')
+        if sub_dt > due_dt:
+            return 'Late Submission'
+        return 'On Time'
+    except Exception:
+        return 'On Time'
+
+app.jinja_env.globals.update(check_timeliness=check_timeliness)
 
 def get_submissions_folder():
     folder = app.config.get('SUBMISSIONS_FOLDER', SUBMISSIONS_FOLDER)
@@ -38,10 +66,9 @@ def get_materials_folder():
     os.makedirs(folder, exist_ok=True)
     return folder
 
-
 # Initialize database if not already created
-if not os.path.exists(DATABASE_PATH):
-    init_db()
+if not os.path.exists(app.config['DATABASE_PATH']):
+    init_db(app.config['DATABASE_PATH'])
 
 def get_db():
     """Returns a per-request SQLite database connection from Flask context."""
@@ -65,7 +92,6 @@ def get_current_user():
     db = get_db()
     user = db.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
     return user
-
 
 @app.before_request
 def load_user():
@@ -127,30 +153,33 @@ def register():
         role = request.form.get('role', '').strip().lower()
         full_name = request.form.get('full_name', '').strip()
 
-        # 1. Mandatory Fields Check ("mail paspost ko nessasary")
+        # 1. Mandatory Fields Check (All fields strictly required)
         if not full_name:
-            flash('Full Name is required.', 'danger')
+            flash('Full Name is mandatory and cannot be empty.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
         if not username:
-            flash('Username is required.', 'danger')
+            flash('Username is mandatory and cannot be empty.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
         if not email:
-            flash('Email address is required.', 'danger')
+            flash('Email address is mandatory.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
         if not password:
-            flash('Password is required.', 'danger')
+            flash('Password is mandatory.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        # 2. Role Validation ("teacher student xuttini gari rakha")
+        if not confirm_password:
+            flash('Please confirm your password.', 'danger')
+            return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
+
+        # 2. Role Validation (Teacher vs Student Distinction)
         if role not in ('teacher', 'student'):
             flash('Please choose whether you are registering as a Student or Teacher.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        # 3. Name Validation ("name latter bata huna paryo")
-        # Full name must start with an alphabet letter (A-Z)
+        # 3. Name Validation (Must start with letters)
         if not re.match(r'^[A-Za-z]', full_name):
             flash('Full Name must start with an alphabet letter (A-Z). Numbers or symbols are not allowed at the beginning.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
@@ -159,7 +188,7 @@ def register():
             flash('Full Name must contain only alphabet letters, spaces, and valid name characters (2-50 characters).', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        # Username must start with an alphabet letter (A-Z)
+        # Username must start with an alphabet letter
         if not re.match(r'^[A-Za-z]', username):
             flash('Username must start with an alphabet letter (A-Z). Numbers or symbols are not allowed at the beginning.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
@@ -168,12 +197,12 @@ def register():
             flash('Username must start with a letter and contain only letters, numbers, or underscores (3-30 characters).', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        # 4. Email Validation ("mail ma gmail.com")
+        # 4. Email Validation (Must be @gmail.com)
         if not re.match(r'^[a-zA-Z0-9._%+-]+@gmail\.com$', email):
             flash('Email must be a valid Gmail address ending with @gmail.com (e.g., yourname@gmail.com).', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
 
-        # 5. Password Validation ("paspost ko nessasary")
+        # 5. Password Validation
         if len(password) < 6:
             flash('Password must be at least 6 characters long.', 'danger')
             return render_template('auth/register.html', full_name=full_name, username=username, email=email, role=role)
@@ -200,8 +229,8 @@ def register():
                 (username, email, password_hash, role, full_name)
             )
 
-        role_label = '👨‍🏫 Teacher' if role == 'teacher' else '👨‍🎓 Student'
-        flash(f'Registration successful as {role_label}! You can now log in with your Gmail or username.', 'success')
+        role_label = 'Teacher' if role == 'teacher' else 'Student'
+        flash(f'Registration successful as {role_label}! You can now sign in with your credentials.', 'success')
         return redirect(url_for('login'))
 
     return render_template('auth/register.html', role='student')
@@ -215,8 +244,12 @@ def login():
         login_input = request.form.get('login_input', '').strip().lower()
         password = request.form.get('password', '')
 
-        if not login_input or not password:
-            flash('Please enter both your Gmail/username and password.', 'danger')
+        if not login_input:
+            flash('Username or Gmail address is mandatory.', 'danger')
+            return render_template('auth/login.html')
+
+        if not password:
+            flash('Password is mandatory.', 'danger')
             return render_template('auth/login.html')
 
         db = get_db()
@@ -231,14 +264,14 @@ def login():
             session['username'] = user['username']
             session['role'] = user['role']
             session['full_name'] = user['full_name']
-            role_label = '👨‍🏫 Teacher' if user['role'] == 'teacher' else '👨‍🎓 Student'
-            flash(f"Welcome back, {user['full_name']}! ({role_label})", 'success')
+            role_label = 'Teacher' if user['role'] == 'teacher' else 'Student'
+            flash(f"Welcome back, {user['full_name']}! Signed in as {role_label}.", 'success')
             next_page = request.args.get('next')
             if next_page and next_page.startswith('/'):
                 return redirect(next_page)
             return redirect(url_for('index'))
         else:
-            flash('Invalid username/Gmail or password.', 'danger')
+            flash('Invalid username/Gmail or password. Please verify credentials.', 'danger')
 
     return render_template('auth/login.html')
 
@@ -263,33 +296,63 @@ def teacher_dashboard():
            ORDER BY g.created_at DESC''',
         (g.user['id'],)
     ).fetchall()
-    return render_template('teacher/dashboard.html', groups=groups)
+
+    # Calculate overall stats for teacher analytics
+    total_students = sum(g['student_count'] for g in groups)
+    total_assignments = sum(g['assignment_count'] for g in groups)
+
+    # Pending submissions needing evaluation
+    pending_submissions = db.execute(
+        '''SELECT COUNT(s.id) AS count
+           FROM submissions s
+           JOIN assignments a ON s.assignment_id = a.id
+           JOIN groups g ON a.group_id = g.id
+           WHERE g.teacher_id = ? AND s.grade IS NULL''',
+        (g.user['id'],)
+    ).fetchone()['count']
+
+    return render_template(
+        'teacher/dashboard.html',
+        groups=groups,
+        total_students=total_students,
+        total_assignments=total_assignments,
+        pending_submissions=pending_submissions
+    )
 
 @app.route('/teacher/groups/create', methods=['GET', 'POST'])
 @teacher_required
 def teacher_create_group():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
+        subject = request.form.get('subject', '').strip()
         description = request.form.get('description', '').strip()
 
+        # All fields are mandatory
         if not name:
-            flash('Group name is required.', 'danger')
-            return render_template('teacher/create_group.html')
+            flash('Group Name is mandatory.', 'danger')
+            return render_template('teacher/create_group.html', name=name, subject=subject, description=description)
+
+        if not subject:
+            flash('Subject / Course Category is mandatory.', 'danger')
+            return render_template('teacher/create_group.html', name=name, subject=subject, description=description)
+
+        if not description:
+            flash('Group Description is mandatory.', 'danger')
+            return render_template('teacher/create_group.html', name=name, subject=subject, description=description)
 
         db = get_db()
         join_code = generate_join_code()
-        # Ensure code uniqueness
         while db.execute('SELECT id FROM groups WHERE join_code = ?', (join_code,)).fetchone():
             join_code = generate_join_code()
 
         with db:
             db.execute(
-                '''INSERT INTO groups (name, description, join_code, teacher_id)
-                   VALUES (?, ?, ?, ?)''',
-                (name, description, join_code, g.user['id'])
+                '''INSERT INTO groups (name, subject, description, join_code, teacher_id)
+                   VALUES (?, ?, ?, ?, ?)''',
+                (name, subject, description, join_code, g.user['id'])
             )
 
-        flash(f'Group "{name}" created successfully with join code: {join_code}', 'success')
+        flash(f'Group "{name}" created successfully with Join Code: {join_code}', 'success')
         return redirect(url_for('teacher_dashboard'))
 
     return render_template('teacher/create_group.html')
@@ -326,7 +389,152 @@ def teacher_group_detail(group_id):
         (group_id,)
     ).fetchall()
 
-    return render_template('teacher/group_detail.html', group=group, assignments=assignments, members=members)
+    announcements = db.execute(
+        '''SELECT * FROM announcements 
+           WHERE group_id = ? 
+           ORDER BY is_pinned DESC, created_at DESC''',
+        (group_id,)
+    ).fetchall()
+
+    return render_template(
+        'teacher/group_detail.html',
+        group=group,
+        assignments=assignments,
+        members=members,
+        announcements=announcements
+    )
+
+@app.route('/teacher/groups/<int:group_id>/announcements/create', methods=['POST'])
+@teacher_required
+def teacher_create_announcement(group_id):
+    db = get_db()
+    group = db.execute(
+        'SELECT * FROM groups WHERE id = ? AND teacher_id = ?',
+        (group_id, g.user['id'])
+    ).fetchone()
+
+    if not group:
+        flash('Group not found or access unauthorized.', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    title = request.form.get('title', '').strip()
+    content = request.form.get('content', '').strip()
+    is_pinned = 1 if request.form.get('is_pinned') else 0
+
+    if not title:
+        flash('Announcement Title is mandatory.', 'danger')
+        return redirect(url_for('teacher_group_detail', group_id=group_id))
+
+    if not content:
+        flash('Announcement Content is mandatory.', 'danger')
+        return redirect(url_for('teacher_group_detail', group_id=group_id))
+
+    with db:
+        db.execute(
+            '''INSERT INTO announcements (group_id, title, content, is_pinned)
+               VALUES (?, ?, ?, ?)''',
+            (group_id, title, content, is_pinned)
+        )
+
+    flash('Announcement published to class board.', 'success')
+    return redirect(url_for('teacher_group_detail', group_id=group_id))
+
+@app.route('/teacher/announcements/<int:announcement_id>/delete', methods=['POST'])
+@teacher_required
+def teacher_delete_announcement(announcement_id):
+    db = get_db()
+    ann = db.execute(
+        '''SELECT a.id, a.group_id
+           FROM announcements a
+           JOIN groups g ON a.group_id = g.id
+           WHERE a.id = ? AND g.teacher_id = ?''',
+        (announcement_id, g.user['id'])
+    ).fetchone()
+
+    if not ann:
+        flash('Announcement not found or access unauthorized.', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    group_id = ann['group_id']
+    with db:
+        db.execute('DELETE FROM announcements WHERE id = ?', (announcement_id,))
+
+    flash('Announcement removed.', 'info')
+    return redirect(url_for('teacher_group_detail', group_id=group_id))
+
+@app.route('/teacher/groups/<int:group_id>/export-csv')
+@teacher_required
+def teacher_export_group_csv(group_id):
+    db = get_db()
+    group = db.execute(
+        'SELECT * FROM groups WHERE id = ? AND teacher_id = ?',
+        (group_id, g.user['id'])
+    ).fetchone()
+
+    if not group:
+        flash('Group not found or access unauthorized.', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    assignments = db.execute(
+        'SELECT id, title, max_points FROM assignments WHERE group_id = ? ORDER BY created_at ASC',
+        (group_id,)
+    ).fetchall()
+
+    members = db.execute(
+        '''SELECT u.id, u.full_name, u.email, u.username
+           FROM group_memberships m
+           JOIN users u ON m.student_id = u.id
+           WHERE m.group_id = ?
+           ORDER BY u.full_name ASC''',
+        (group_id,)
+    ).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    header = ['Student ID', 'Student Name', 'Email', 'Username']
+    for a in assignments:
+        header.append(f"{a['title']} (Max: {a['max_points']})")
+    header.append('Average Score (%)')
+    writer.writerow(header)
+
+    for m in members:
+        row = [m['id'], m['full_name'], m['email'], m['username']]
+        total_score = 0
+        total_max = 0
+        scored_count = 0
+
+        for a in assignments:
+            sub = db.execute(
+                'SELECT grade FROM submissions WHERE assignment_id = ? AND student_id = ?',
+                (a['id'], m['id'])
+            ).fetchone()
+
+            if sub and sub['grade'] is not None:
+                row.append(str(sub['grade']))
+                total_score += sub['grade']
+                total_max += a['max_points']
+                scored_count += 1
+            else:
+                row.append('N/A')
+
+        if total_max > 0 and scored_count > 0:
+            avg_pct = round((total_score / total_max) * 100, 2)
+            row.append(f"{avg_pct}%")
+        else:
+            row.append('N/A')
+
+        writer.writerow(row)
+
+    output.seek(0)
+    clean_group_name = re.sub(r'[^a-zA-Z0-9_-]', '_', group['name'])
+    filename = f"Roster_Grades_{clean_group_name}_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename={filename}"}
+    )
 
 @app.route('/teacher/groups/<int:group_id>/assignments/create', methods=['GET', 'POST'])
 @teacher_required
@@ -345,16 +553,32 @@ def teacher_create_assignment(group_id):
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
         due_date = request.form.get('due_date', '').strip()
-        max_points = request.form.get('max_points', 100)
+        max_points_input = request.form.get('max_points', '').strip()
 
-        if not title or not description:
-            flash('Assignment title and description are required.', 'danger')
+        # All fields are mandatory
+        if not title:
+            flash('Assignment Title is mandatory.', 'danger')
+            return render_template('teacher/create_assignment.html', group=group)
+
+        if not description:
+            flash('Assignment Instructions / Description is mandatory.', 'danger')
+            return render_template('teacher/create_assignment.html', group=group)
+
+        if not due_date:
+            flash('Assignment Due Date & Time is mandatory.', 'danger')
+            return render_template('teacher/create_assignment.html', group=group)
+
+        if not max_points_input:
+            flash('Max Points is mandatory.', 'danger')
             return render_template('teacher/create_assignment.html', group=group)
 
         try:
-            max_points = int(max_points)
+            max_points = int(max_points_input)
+            if max_points <= 0:
+                raise ValueError
         except ValueError:
-            max_points = 100
+            flash('Max Points must be a positive number greater than 0.', 'danger')
+            return render_template('teacher/create_assignment.html', group=group)
 
         attachment_filename = None
         original_attachment_name = None
@@ -397,7 +621,6 @@ def teacher_assignment_submissions(assignment_id):
         flash('Assignment not found or access unauthorized.', 'danger')
         return redirect(url_for('teacher_dashboard'))
 
-    # Retrieve all enrolled students along with their submissions (if any)
     students = db.execute(
         '''SELECT u.id AS student_id, u.full_name, u.email,
                   s.id AS submission_id, s.stored_filename, s.original_filename,
@@ -410,7 +633,81 @@ def teacher_assignment_submissions(assignment_id):
         (assignment_id, assignment['group_id'])
     ).fetchall()
 
-    return render_template('teacher/submissions.html', assignment=assignment, students=students)
+    total_roster = len(students)
+    submitted_count = sum(1 for s in students if s['submission_id'] is not None)
+    graded_count = sum(1 for s in students if s['grade'] is not None)
+
+    return render_template(
+        'teacher/submissions.html',
+        assignment=assignment,
+        students=students,
+        total_roster=total_roster,
+        submitted_count=submitted_count,
+        graded_count=graded_count
+    )
+
+@app.route('/teacher/assignments/<int:assignment_id>/export-csv')
+@teacher_required
+def teacher_export_assignment_csv(assignment_id):
+    db = get_db()
+    assignment = db.execute(
+        '''SELECT a.*, g.name AS group_name, g.teacher_id
+           FROM assignments a
+           JOIN groups g ON a.group_id = g.id
+           WHERE a.id = ? AND g.teacher_id = ?''',
+        (assignment_id, g.user['id'])
+    ).fetchone()
+
+    if not assignment:
+        flash('Assignment not found or access unauthorized.', 'danger')
+        return redirect(url_for('teacher_dashboard'))
+
+    students = db.execute(
+        '''SELECT u.id AS student_id, u.full_name, u.email, u.username,
+                  s.stored_filename, s.original_filename, s.notes, s.submitted_at,
+                  s.grade, s.feedback, s.graded_at
+           FROM group_memberships m
+           JOIN users u ON m.student_id = u.id
+           LEFT JOIN submissions s ON s.assignment_id = ? AND s.student_id = u.id
+           WHERE m.group_id = ?
+           ORDER BY u.full_name ASC''',
+        (assignment_id, assignment['group_id'])
+    ).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'Student ID', 'Student Name', 'Email', 'Username',
+        'Submission Status', 'Timeliness', 'Submitted At', 'Grade', 'Max Points',
+        'Teacher Feedback', 'Student Notes'
+    ])
+
+    for st in students:
+        status = 'Graded' if st['grade'] is not None else ('Submitted' if st['submitted_at'] else 'Missing')
+        timeliness = check_timeliness(st['submitted_at'], assignment['due_date']) if st['submitted_at'] else 'Not Submitted'
+        writer.writerow([
+            st['student_id'],
+            st['full_name'],
+            st['email'],
+            st['username'],
+            status,
+            timeliness,
+            st['submitted_at'] or 'N/A',
+            st['grade'] if st['grade'] is not None else 'Unscored',
+            assignment['max_points'],
+            st['feedback'] or '',
+            st['notes'] or ''
+        ])
+
+    output.seek(0)
+    clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', assignment['title'])
+    filename = f"Submissions_{clean_title}_{datetime.now().strftime('%Y%m%d')}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename={filename}"}
+    )
 
 @app.route('/teacher/submissions/<int:submission_id>/grade', methods=['POST'])
 @teacher_required
@@ -432,8 +729,20 @@ def teacher_grade_submission(submission_id):
     grade_input = request.form.get('grade', '').strip()
     feedback = request.form.get('feedback', '').strip()
 
+    # Both grade and feedback are strictly mandatory
+    if not grade_input:
+        flash('Numerical Grade is mandatory.', 'danger')
+        return redirect(url_for('teacher_assignment_submissions', assignment_id=submission['assignment_id']))
+
+    if not feedback:
+        flash('Teacher Feedback comments are mandatory.', 'danger')
+        return redirect(url_for('teacher_assignment_submissions', assignment_id=submission['assignment_id']))
+
     try:
-        grade = float(grade_input) if grade_input else None
+        grade = float(grade_input)
+        if grade < 0 or grade > submission['max_points']:
+            flash(f"Grade must be between 0 and {submission['max_points']}.", 'danger')
+            return redirect(url_for('teacher_assignment_submissions', assignment_id=submission['assignment_id']))
     except ValueError:
         flash('Invalid grade number.', 'danger')
         return redirect(url_for('teacher_assignment_submissions', assignment_id=submission['assignment_id']))
@@ -446,7 +755,7 @@ def teacher_grade_submission(submission_id):
             (grade, feedback, submission_id)
         )
 
-    flash('Grade and feedback saved successfully.', 'success')
+    flash('Grade and evaluative feedback saved successfully.', 'success')
     return redirect(url_for('teacher_assignment_submissions', assignment_id=submission['assignment_id']))
 
 # --- Student Routes ---
@@ -466,10 +775,9 @@ def student_dashboard():
         (g.user['id'],)
     ).fetchall()
 
-    # Active upcoming assignments
     pending_assignments = db.execute(
         '''SELECT a.*, g.name AS group_name, u.full_name AS teacher_name,
-                  s.id AS submission_id, s.grade, s.graded_at
+                  s.id AS submission_id, s.grade, s.submitted_at, s.graded_at
            FROM group_memberships m
            JOIN assignments a ON m.group_id = a.group_id
            JOIN groups g ON a.group_id = g.id
@@ -480,7 +788,20 @@ def student_dashboard():
         (g.user['id'], g.user['id'])
     ).fetchall()
 
-    return render_template('student/dashboard.html', groups=enrolled_groups, assignments=pending_assignments)
+    # Calculate student metrics
+    completed_count = sum(1 for a in pending_assignments if a['submission_id'] is not None)
+    total_tasks = len(pending_assignments)
+    graded_scores = [a['grade'] for a in pending_assignments if a['grade'] is not None]
+    avg_score = round(sum(graded_scores) / len(graded_scores), 1) if graded_scores else None
+
+    return render_template(
+        'student/dashboard.html',
+        groups=enrolled_groups,
+        assignments=pending_assignments,
+        completed_count=completed_count,
+        total_tasks=total_tasks,
+        avg_score=avg_score
+    )
 
 @app.route('/student/groups/join', methods=['GET', 'POST'])
 @student_required
@@ -488,17 +809,16 @@ def student_join_group():
     if request.method == 'POST':
         join_code = request.form.get('join_code', '').strip().upper()
         if not join_code:
-            flash('Please enter a group join code.', 'danger')
+            flash('Group Join Code is mandatory.', 'danger')
             return render_template('student/join_group.html')
 
         db = get_db()
         group = db.execute('SELECT * FROM groups WHERE UPPER(join_code) = ?', (join_code,)).fetchone()
 
         if not group:
-            flash('No group found with that join code. Please verify with your teacher.', 'danger')
+            flash('No group found with that Join Code. Please verify with your teacher.', 'danger')
             return render_template('student/join_group.html')
 
-        # Check if already joined
         membership = db.execute(
             'SELECT id FROM group_memberships WHERE group_id = ? AND student_id = ?',
             (group['id'], g.user['id'])
@@ -550,7 +870,19 @@ def student_group_detail(group_id):
         (g.user['id'], group_id)
     ).fetchall()
 
-    return render_template('student/group_detail.html', group=group, assignments=assignments)
+    announcements = db.execute(
+        '''SELECT * FROM announcements 
+           WHERE group_id = ? 
+           ORDER BY is_pinned DESC, created_at DESC''',
+        (group_id,)
+    ).fetchall()
+
+    return render_template(
+        'student/group_detail.html',
+        group=group,
+        assignments=assignments,
+        announcements=announcements
+    )
 
 @app.route('/student/assignments/<int:assignment_id>', methods=['GET', 'POST'])
 @student_required
@@ -578,11 +910,20 @@ def student_assignment_detail(assignment_id):
     if request.method == 'POST':
         notes = request.form.get('notes', '').strip()
 
-        if 'file' not in request.files or not request.files['file'].filename:
-            if not submission:
-                flash('Please select a file to submit.', 'danger')
-                return render_template('student/assignment_detail.html', assignment=assignment, submission=submission)
-            # If already submitted and only updating notes
+        # Notes are strictly mandatory
+        if not notes:
+            flash('Submission notes / remarks are mandatory.', 'danger')
+            return render_template('student/assignment_detail.html', assignment=assignment, submission=submission)
+
+        file = request.files.get('file')
+
+        # If new submission, file is strictly mandatory
+        if not submission and (not file or not file.filename):
+            flash('Attaching your homework solution file is mandatory for submission.', 'danger')
+            return render_template('student/assignment_detail.html', assignment=assignment, submission=submission)
+
+        # If existing submission and no new file uploaded, update notes
+        if submission and (not file or not file.filename):
             with db:
                 db.execute(
                     'UPDATE submissions SET notes = ? WHERE id = ?',
@@ -591,7 +932,7 @@ def student_assignment_detail(assignment_id):
             flash('Submission notes updated successfully.', 'success')
             return redirect(url_for('student_assignment_detail', assignment_id=assignment_id))
 
-        file = request.files['file']
+        # File is provided
         orig_name = secure_filename(file.filename)
         if not orig_name:
             flash('Invalid file name.', 'danger')
@@ -603,7 +944,6 @@ def student_assignment_detail(assignment_id):
 
         with db:
             if submission:
-                # Remove old file from disk if desired or overwrite record
                 try:
                     old_path = os.path.join(submissions_dir, submission['stored_filename'])
                     if os.path.exists(old_path):
@@ -656,12 +996,10 @@ def download_submission_file(submission_id):
     if not sub_info:
         abort(404, "Submission record not found.")
 
-    # Authorization Check
     is_teacher = (g.user['role'] == 'teacher' and g.user['id'] == sub_info['teacher_id'])
     is_owner_student = (g.user['role'] == 'student' and g.user['id'] == sub_info['student_id'])
 
     if not (is_teacher or is_owner_student):
-        # Strictly forbidden
         abort(403, "Access Denied: Student files can only be accessed by the teacher of this group or the student who submitted it.")
 
     sub_dir = get_submissions_folder()
@@ -693,7 +1031,6 @@ def download_assignment_attachment(assignment_id):
     if not assignment or not assignment['attachment_filename']:
         abort(404, "Attachment not found.")
 
-    # Authorization: Either teacher of group OR enrolled student
     is_teacher = (g.user['role'] == 'teacher' and g.user['id'] == assignment['teacher_id'])
     is_enrolled = (g.user['role'] == 'student' and assignment['membership_id'] is not None)
 
@@ -713,7 +1050,6 @@ def download_assignment_attachment(assignment_id):
     )
 
 if __name__ == '__main__':
-    print("ClassroomPortal is running!")
-    print("  Local (Only this PC): http://127.0.0.1:5000")
-    print("  Network (Same Wi-Fi): http://0.0.0.0:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"ClassroomPortal running on port {port}")
+    app.run(debug=False, host='0.0.0.0', port=port)

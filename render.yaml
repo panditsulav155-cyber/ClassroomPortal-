@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: classroom-portal
+    env: python
+    buildCommand: "pip install -r requirements.txt && pip install gunicorn waitress"
+    startCommand: "gunicorn wsgi:app --workers 4 --threads 2 --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+    disk:
+      name: portal-storage
+      mountPath: /app/uploads
+      sizeGB: 5
